@@ -350,7 +350,13 @@ export REDDIT_CLIENT_ID=your_client_id
 export REDDIT_CLIENT_SECRET=your_client_secret
 ```
 
-或在 docker-compose.yml 中取消 `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` 的註解。
+或在 `.env` 檔中填入（Docker Compose 會自動讀取）：
+
+```bash
+# .env
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
+```
 
 系統啟動時會自動偵測：有 PRAW + 環境變數 → 用 PRAW，否則 → fallback 到 public JSON API。
 
