@@ -181,10 +181,13 @@ join(tables: {{ptt: ptt, reddit: reddit}}, on: ["_time"])
 
             # 撈貼文 + LLM 解釋
             if event.source == "cross":
-                # 跨市場事件：撈兩邊的貼文
+                # 跨市場事件：加前綴讓 explainer 分辨來源
                 titles_ptt = self._explainer.query_top_posts("2330", "ptt", 30, 5)
                 titles_reddit = self._explainer.query_top_posts("TSM", "reddit", 30, 5)
-                event.titles = titles_reddit + titles_ptt
+                event.titles = (
+                    [f"[Reddit] {t}" for t in titles_reddit]
+                    + [f"[PTT] {t}" for t in titles_ptt]
+                )
             else:
                 event.titles = self._explainer.query_top_posts(
                     event.ticker, event.source, 30, 10,
