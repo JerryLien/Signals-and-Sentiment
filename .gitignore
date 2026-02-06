@@ -15,5 +15,6 @@ env/
 .vscode/
 *.swp
 *.swo
-data/
+# 動態暱稱由 feed.py 自動產生，不進版控
+data/dynamic_aliases.json
 output/

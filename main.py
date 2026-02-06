@@ -2,15 +2,16 @@
 """PTT 股板情緒分析 — 受 ICE Reddit Signals and Sentiment 啟發。
 
 用法:
-    python main.py                      # 預設爬 Stock 版 1 頁
+    python main.py                              # 預設爬 Stock 版 1 頁
     python main.py --board Gossiping --pages 3
+    python main.py --update-aliases             # 先從 TWSE/TPEX 更新動態暱稱再分析
 """
 
 import argparse
 import json
 import sys
 
-from ptt_scraper import EntityMapper, PttScraper, SentimentScorer
+from ptt_scraper import EntityMapper, PttScraper, SentimentScorer, update_dynamic_aliases
 
 
 def main() -> None:
@@ -29,7 +30,15 @@ def main() -> None:
     parser.add_argument(
         "--json", action="store_true", help="以 JSON 格式輸出結果",
     )
+    parser.add_argument(
+        "--update-aliases", action="store_true",
+        help="從 TWSE/TPEX 更新動態暱稱（股王、股后等）後再執行分析",
+    )
     args = parser.parse_args()
+
+    if args.update_aliases:
+        update_dynamic_aliases()
+        print()
 
     scraper = PttScraper(board=args.board, delay=args.delay)
     scorer = SentimentScorer()
