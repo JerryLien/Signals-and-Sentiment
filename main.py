@@ -9,6 +9,7 @@
     python main.py --buzz                       # 異常熱度偵測 (Pump-and-Dump 預警)
     python main.py --sectors                    # 板塊輪動追蹤
     python main.py --all                        # 全部分析一次跑完
+    python main.py --all --influxdb             # 全部分析 + 寫入 InfluxDB
 """
 
 import argparse
@@ -18,6 +19,7 @@ import sys
 from ptt_scraper import (
     BuzzDetector,
     EntityMapper,
+    InfluxStore,
     PttScraper,
     SectorTracker,
     SentimentScorer,
@@ -61,6 +63,10 @@ def main() -> None:
     parser.add_argument(
         "--all", action="store_true",
         help="執行全部分析（sentiment + contrarian + buzz + sectors）",
+    )
+    parser.add_argument(
+        "--influxdb", action="store_true",
+        help="將結果寫入 InfluxDB（需先 docker compose up）",
     )
     args = parser.parse_args()
 
@@ -168,6 +174,13 @@ def main() -> None:
                 for h in sector_report.sectors
             ],
         }
+
+    # 寫入 InfluxDB
+    if args.influxdb:
+        store = InfluxStore()
+        count = store.write_all(output, args.board)
+        store.close()
+        print(f"\n已寫入 {count} 筆資料到 InfluxDB。")
 
     # 輸出
     if args.json:

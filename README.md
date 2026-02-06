@@ -161,6 +161,73 @@ AI伺服器、散熱、CPO光通訊、半導體、航運、金融、電動車、
 
 完整對應表見 [`data/aliases.json`](data/aliases.json)。也支援直接辨識純數字代碼（如 `2330`、`2330.TW`）。
 
+## 即時監控 (Live Stack)
+
+將靜態 JSON 轉為即時時間序列數據流，用 Grafana 視覺化。
+
+### 架構
+
+```
+[Python 爬蟲] → [InfluxDB 2.x] → [Grafana Dashboard]
+     ↑                                    ↓
+  scheduler.py (每 N 分鐘)          瀏覽器 localhost:3000
+```
+
+### Quick Start
+
+```bash
+# 1. 啟動 InfluxDB + Grafana
+docker compose up -d
+
+# 2. 單次寫入測試
+pip install -r requirements.txt
+python main.py --all --influxdb
+
+# 3. 開啟 Grafana
+#    http://localhost:3000 (admin / admin)
+#    Dashboard 已自動建好: "PTT Signals & Sentiment"
+
+# 4. 啟動排程器（每 5 分鐘自動爬取 + 寫入）
+python scheduler.py --interval 5 --pages 2
+```
+
+### Grafana Dashboard 內建面板
+
+| 面板 | 類型 | 說明 |
+|------|------|------|
+| 看板情緒分數 | Time Series | 平均 sentiment score 趨勢線，紅/黃/綠區間 |
+| 恐慌/貪婪指數 | Gauge | 畢業文 vs. 歐印文比例的即時儀表 |
+| 反指標趨勢 | Time Series | 畢業文/歐印文比例隨時間變化 |
+| 個股討論熱度 Top 10 | Bar Chart | 討論量最高的前 10 支股票 |
+| Buzz 異常標的 | Table | Z-score >= 2.0 的異常飆升股票 |
+| 板塊輪動 | Bar Chart | 各主題熱度排行 |
+| 看多/看空文章數 | Stacked Bar | 每輪的 bullish/bearish/neutral 堆疊圖 |
+| 板塊熱度趨勢 | Time Series | 各板塊討論量的時間變化（觀察輪動轉折） |
+
+### 排程器參數
+
+```bash
+python scheduler.py --help
+
+  --board      目標看板 (預設: Stock)
+  --pages      每輪爬幾頁 (預設: 1)
+  --delay      HTTP 請求間隔 (預設: 0.5s)
+  --interval   排程間隔分鐘數 (預設: 5)
+```
+
+### 環境變數
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `INFLUXDB_URL` | `http://localhost:8086` | InfluxDB 連線 URL |
+| `INFLUXDB_TOKEN` | `ptt-dev-token` | API Token |
+| `INFLUXDB_ORG` | `ptt-lab` | Organization |
+| `INFLUXDB_BUCKET` | `ptt_sentiment` | Bucket 名稱 |
+
+> 正式環境請務必更換 Token 和密碼。docker-compose.yml 中的預設值僅供開發用。
+
+---
+
 ## 作為模組使用
 
 ```python
