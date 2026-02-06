@@ -1,0 +1,86 @@
+{
+  "_comment": "跨市場 ticker 對應表。將 PTT (台股) 和 Reddit (美股/ADR) 的 ticker 串聯起來，讓 Grafana 雙軸面板可以對比同一家公司在不同市場的情緒。",
+  "_format": "每筆: { ptt_ticker, ptt_name, reddit_ticker, reddit_name, notes }",
+  "mappings": [
+    {
+      "ptt_ticker": "2330",
+      "ptt_name": "台積電",
+      "reddit_ticker": "TSM",
+      "reddit_name": "TSMC (ADR)",
+      "notes": "全球最大晶圓代工"
+    },
+    {
+      "ptt_ticker": "2454",
+      "ptt_name": "聯發科",
+      "reddit_ticker": "MRVL",
+      "reddit_name": "Marvell Technology",
+      "notes": "IC 設計，MRVL 為 Reddit 討論最多的對標"
+    },
+    {
+      "ptt_ticker": "2317",
+      "ptt_name": "鴻海",
+      "reddit_ticker": "HNHPF",
+      "reddit_name": "Hon Hai Precision (OTC)",
+      "notes": "EMS 龍頭，美股 OTC 交易量低，主要看 Foxconn 相關討論"
+    },
+    {
+      "ptt_ticker": "2303",
+      "ptt_name": "聯電",
+      "reddit_ticker": "UMC",
+      "reddit_name": "UMC (ADR)",
+      "notes": "晶圓代工"
+    },
+    {
+      "ptt_ticker": "3711",
+      "ptt_name": "日月光投控",
+      "reddit_ticker": "ASX",
+      "reddit_name": "ASE Technology (ADR)",
+      "notes": "封測龍頭"
+    },
+    {
+      "ptt_ticker": "2308",
+      "ptt_name": "台達電",
+      "reddit_ticker": "DLELF",
+      "reddit_name": "Delta Electronics (OTC)",
+      "notes": "AI 伺服器電源"
+    },
+    {
+      "ptt_ticker": "2382",
+      "ptt_name": "廣達",
+      "reddit_ticker": "QUCCF",
+      "reddit_name": "Quanta Computer (OTC)",
+      "notes": "AI 伺服器代工"
+    },
+    {
+      "ptt_ticker": "TAIEX",
+      "ptt_name": "加權指數",
+      "reddit_ticker": "EWT",
+      "reddit_name": "iShares MSCI Taiwan ETF",
+      "notes": "Reddit 上追蹤台灣大盤的 ETF"
+    }
+  ],
+
+  "_sector_mapping_comment": "板塊級對應 — PTT 板塊 vs Reddit 主題的概念對應",
+  "sector_mappings": [
+    {
+      "ptt_sector": "AI伺服器",
+      "reddit_tickers": ["NVDA", "AMD", "SMCI", "DELL", "HPE"],
+      "notes": "台灣 AI 伺服器供應鏈 vs 美國 AI 受益股"
+    },
+    {
+      "ptt_sector": "半導體",
+      "reddit_tickers": ["TSM", "ASML", "LRCX", "AMAT", "KLAC"],
+      "notes": "半導體設備與製造"
+    },
+    {
+      "ptt_sector": "電動車",
+      "reddit_tickers": ["TSLA", "RIVN", "LCID", "NIO", "LI"],
+      "notes": "EV 供應鏈"
+    },
+    {
+      "ptt_sector": "散熱",
+      "reddit_tickers": ["NVDA", "SMCI"],
+      "notes": "台灣散熱族群（雙鴻、奇鋐）vs AI 伺服器散熱需求受益股"
+    }
+  ]
+}

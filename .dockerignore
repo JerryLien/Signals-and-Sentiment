@@ -1,0 +1,12 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+data/dynamic_aliases.json
+data/buzz_history.json
+grafana/
+.dockerignore
+Dockerfile
+docker-compose.yml
+README.md
+.gitignore

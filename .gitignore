@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.env
+.venv/
+venv/
+env/
+*.log
+.idea/
+.vscode/
+*.swp
+*.swo
+# 自動產生的資料檔，不進版控
+data/dynamic_aliases.json
+data/buzz_history.json
+output/
