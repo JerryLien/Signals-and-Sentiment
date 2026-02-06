@@ -7,15 +7,44 @@ services:
       - ./data:/app/data
     environment:
       INFLUXDB_URL: http://influxdb:8086
-      INFLUXDB_TOKEN: ptt-dev-token
-      INFLUXDB_ORG: ptt-lab
-      INFLUXDB_BUCKET: ptt_sentiment
-      # Reddit PRAW (可選，不設定則 fallback 到 public JSON API)
-      # REDDIT_CLIENT_ID: your_client_id
-      # REDDIT_CLIENT_SECRET: your_client_secret
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-ptt-dev-token}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-ptt-lab}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-ptt_sentiment}
+      REDDIT_CLIENT_ID: ${REDDIT_CLIENT_ID:-}
+      REDDIT_CLIENT_SECRET: ${REDDIT_CLIENT_SECRET:-}
     depends_on:
-      - influxdb
+      influxdb:
+        condition: service_started
     restart: unless-stopped
+
+  # InfluxDB 初始化後設定 Retention Policy
+  influxdb-init:
+    image: influxdb:2.7
+    container_name: influxdb-init
+    depends_on:
+      influxdb:
+        condition: service_started
+    environment:
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-ptt-dev-token}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-ptt-lab}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-ptt_sentiment}
+      INFLUXDB_RETENTION_DAYS: ${INFLUXDB_RETENTION_DAYS:-90}
+    entrypoint: >
+      sh -c '
+        echo "Waiting for InfluxDB to start..."
+        sleep 5
+        RETENTION_SECONDS=$$((INFLUXDB_RETENTION_DAYS * 86400))
+        echo "Setting retention policy: $${INFLUXDB_RETENTION_DAYS} days ($${RETENTION_SECONDS}s)"
+        influx bucket update
+          --host http://influxdb:8086
+          --token $$INFLUXDB_TOKEN
+          --org $$INFLUXDB_ORG
+          --name $$INFLUXDB_BUCKET
+          --retention $${RETENTION_SECONDS}s
+        || echo "Retention update skipped (bucket may not exist yet)"
+        echo "Done."
+      '
+    restart: "no"
 
   influxdb:
     image: influxdb:2.7
@@ -27,10 +56,11 @@ services:
     environment:
       DOCKER_INFLUXDB_INIT_MODE: setup
       DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: ptt-sentiment-2026
-      DOCKER_INFLUXDB_INIT_ORG: ptt-lab
-      DOCKER_INFLUXDB_INIT_BUCKET: ptt_sentiment
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ptt-dev-token
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_ADMIN_PASSWORD:-ptt-sentiment-2026}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG:-ptt-lab}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:-ptt_sentiment}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:-ptt-dev-token}
+      DOCKER_INFLUXDB_INIT_RETENTION: ${INFLUXDB_RETENTION_DAYS:-90}d
 
   grafana:
     image: grafana/grafana:11.0.0
@@ -43,7 +73,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
       GF_UNIFIED_ALERTING_ENABLED: "true"
     depends_on:
       - influxdb

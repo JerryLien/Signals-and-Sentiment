@@ -205,6 +205,11 @@ AI伺服器、散熱、CPO光通訊、半導體、航運、金融、電動車、
 ### Quick Start (一鍵部署)
 
 ```bash
+# 0. 設定環境變數 (複製範本，填入你的 secrets)
+cp .env.example .env
+# 編輯 .env，至少設定 INFLUXDB_TOKEN 和 INFLUXDB_ADMIN_PASSWORD
+# 如需 PRAW，填入 REDDIT_CLIENT_ID 和 REDDIT_CLIENT_SECRET
+
 # 方法 1: Docker Compose 全自動 (推薦)
 # 自動建構爬蟲映像 + 啟動 InfluxDB + Grafana + 排程器
 docker compose up -d
@@ -267,16 +272,26 @@ python scheduler.py --help
 
 ### 環境變數
 
+所有 secrets 統一透過 `.env` 檔管理（已在 `.gitignore` 中），不直接寫在 docker-compose.yml。
+
+```bash
+cp .env.example .env   # 複製範本後填入你的值
+```
+
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
 | `INFLUXDB_URL` | `http://localhost:8086` | InfluxDB 連線 URL |
 | `INFLUXDB_TOKEN` | `ptt-dev-token` | API Token |
 | `INFLUXDB_ORG` | `ptt-lab` | Organization |
 | `INFLUXDB_BUCKET` | `ptt_sentiment` | Bucket 名稱 |
+| `INFLUXDB_ADMIN_PASSWORD` | `ptt-sentiment-2026` | InfluxDB 管理員密碼 |
+| `INFLUXDB_RETENTION_DAYS` | `90` | 資料保留天數 (避免硬碟爆掉) |
 | `REDDIT_CLIENT_ID` | (無) | Reddit OAuth2 Client ID (啟用 PRAW) |
 | `REDDIT_CLIENT_SECRET` | (無) | Reddit OAuth2 Client Secret (啟用 PRAW) |
+| `GF_SECURITY_ADMIN_PASSWORD` | `admin` | Grafana 管理員密碼 |
 
-> 正式環境請務必更換 Token 和密碼。docker-compose.yml 中的預設值僅供開發用。
+> **安全提醒**: 正式環境請務必在 `.env` 中更換所有預設 Token 和密碼。
+> `.env` 已在 `.gitignore` 中，不會被 commit 到版本控制。
 
 ---
 
