@@ -1,14 +1,14 @@
 """InfluxDB 寫入模組 — 把分析結果轉為時間序列資料。
 
-將四種分析結果（sentiment, contrarian, buzz, sectors）寫入 InfluxDB，
-供 Grafana 即時視覺化。
+同時支援 PTT 和 Reddit 兩種資料源，統一寫入同一個 InfluxDB bucket，
+透過 source tag 區分來源，供 Grafana 即時視覺化。
 
 Measurements:
 - post_sentiment   : 每篇文章的情緒分數 (per-post)
-- board_sentiment  : 看板整體情緒彙總 (per-scrape)
-- contrarian_index : 畢業文/歐印文指數 (per-scrape)
+- board_sentiment  : 看板/subreddit 整體情緒彙總 (per-scrape)
+- contrarian_index : 畢業文/歐印文指數 (per-scrape, PTT only)
 - ticker_buzz      : 個股討論熱度 (per-ticker per-scrape)
-- sector_heat      : 板塊熱度 (per-sector per-scrape)
+- sector_heat      : 板塊熱度 (per-sector per-scrape, PTT only)
 """
 
 from __future__ import annotations
@@ -54,8 +54,13 @@ class InfluxStore:
     # 寫入方法
     # ------------------------------------------------------------------
 
-    def write_sentiment(self, results: list[dict], board: str) -> int:
-        """寫入每篇文章的情緒分數 + 看板彙總。"""
+    def write_sentiment(
+        self, results: list[dict], board: str, source: str = "ptt",
+    ) -> int:
+        """寫入每篇文章的情緒分數 + 看板彙總。
+
+        同時支援 PTT (push/boo/arrow) 和 Reddit (upvote_ratio/bullish_hits) 格式。
+        """
         now = datetime.now(tz=timezone.utc)
         points: list[Point] = []
 
@@ -75,15 +80,29 @@ class InfluxStore:
             # per-post
             p = (
                 Point("post_sentiment")
+                .tag("source", source)
                 .tag("board", board)
                 .tag("label", s["label"])
                 .field("score", float(s["score"]))
-                .field("push", s["push"])
-                .field("boo", s["boo"])
-                .field("arrow", s["arrow"])
                 .field("title", r["title"])
                 .time(now)
             )
+
+            # PTT-specific fields
+            if "push" in s:
+                p = p.field("push", s["push"])
+                p = p.field("boo", s["boo"])
+                p = p.field("arrow", s["arrow"])
+
+            # Reddit-specific fields
+            if "upvote_ratio" in s:
+                p = p.field("upvote_ratio", float(s["upvote_ratio"]))
+                p = p.field("post_score", s["post_score"])
+                p = p.field("bullish_hits", s["bullish_hits"])
+                p = p.field("bearish_hits", s["bearish_hits"])
+                if r.get("subreddit"):
+                    p = p.tag("subreddit", r["subreddit"])
+
             # 附加第一個 entity 作為 tag (方便 GROUP BY ticker)
             if r.get("entities"):
                 p = p.tag("ticker", r["entities"][0]["ticker"])
@@ -94,6 +113,7 @@ class InfluxStore:
         avg_score = total_score / count if count else 0.0
         points.append(
             Point("board_sentiment")
+            .tag("source", source)
             .tag("board", board)
             .field("avg_score", round(avg_score, 2))
             .field("total_posts", count)
@@ -106,11 +126,14 @@ class InfluxStore:
         self.write_api.write(bucket=self.bucket, org=self.org, record=points)
         return len(points)
 
-    def write_contrarian(self, data: dict, board: str) -> int:
+    def write_contrarian(
+        self, data: dict, board: str, source: str = "ptt",
+    ) -> int:
         """寫入反指標指數。"""
         now = datetime.now(tz=timezone.utc)
         p = (
             Point("contrarian_index")
+            .tag("source", source)
             .tag("board", board)
             .tag("market_signal", data["market_signal"])
             .field("total_posts", data["total_posts"])
@@ -123,7 +146,9 @@ class InfluxStore:
         self.write_api.write(bucket=self.bucket, org=self.org, record=p)
         return 1
 
-    def write_buzz(self, data: dict, board: str) -> int:
+    def write_buzz(
+        self, data: dict, board: str, source: str = "ptt",
+    ) -> int:
         """寫入個股討論熱度。"""
         now = datetime.now(tz=timezone.utc)
         points: list[Point] = []
@@ -131,6 +156,7 @@ class InfluxStore:
         for t in data["tickers"]:
             p = (
                 Point("ticker_buzz")
+                .tag("source", source)
                 .tag("board", board)
                 .tag("ticker", t["ticker"])
                 .tag("anomaly", str(t["anomaly"]).lower())
@@ -144,7 +170,9 @@ class InfluxStore:
         self.write_api.write(bucket=self.bucket, org=self.org, record=points)
         return len(points)
 
-    def write_sectors(self, data: dict, board: str) -> int:
+    def write_sectors(
+        self, data: dict, board: str, source: str = "ptt",
+    ) -> int:
         """寫入板塊熱度。"""
         now = datetime.now(tz=timezone.utc)
         points: list[Point] = []
@@ -152,6 +180,7 @@ class InfluxStore:
         for rank, s in enumerate(data["ranking"], 1):
             p = (
                 Point("sector_heat")
+                .tag("source", source)
                 .tag("board", board)
                 .tag("sector", s["sector"])
                 .field("mentions", s["mentions"])
@@ -164,15 +193,23 @@ class InfluxStore:
         self.write_api.write(bucket=self.bucket, org=self.org, record=points)
         return len(points)
 
-    def write_all(self, output: dict, board: str) -> int:
-        """一次寫入所有可用的分析結果。"""
+    def write_all(
+        self, output: dict, board: str, source: str = "ptt",
+    ) -> int:
+        """一次寫入所有可用的分析結果。
+
+        Parameters
+        ----------
+        source : str
+            資料來源標記，"ptt" 或 "reddit"。
+        """
         total = 0
         if "sentiment" in output:
-            total += self.write_sentiment(output["sentiment"], board)
+            total += self.write_sentiment(output["sentiment"], board, source)
         if "contrarian" in output:
-            total += self.write_contrarian(output["contrarian"], board)
+            total += self.write_contrarian(output["contrarian"], board, source)
         if "buzz" in output:
-            total += self.write_buzz(output["buzz"], board)
+            total += self.write_buzz(output["buzz"], board, source)
         if "sectors" in output:
-            total += self.write_sectors(output["sectors"], board)
+            total += self.write_sectors(output["sectors"], board, source)
         return total

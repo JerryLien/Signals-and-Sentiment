@@ -70,7 +70,7 @@ python main.py --update-aliases --all --pages 5 --json
 ### Reddit (美股/加密貨幣)
 
 ```bash
-# 預設爬 5 個版 (wallstreetbets, stocks, investing, cryptocurrency, bitcoin)
+# 預設爬 7 個版 (wallstreetbets, stocks, investing, options, cryptocurrency, bitcoin, SatoshiStreetBets)
 python main.py --source reddit
 
 # 指定 subreddit + 每版抓 50 篇
@@ -87,7 +87,7 @@ python main.py --source reddit --comments --json
 | `--source` | `ptt` | 資料源: `ptt` 或 `reddit` |
 | `--board` | `Stock` | PTT 看板 |
 | `--pages` | `1` | PTT 往前爬幾頁 |
-| `--subreddits` | 5 個版 | Reddit subreddit 列表 |
+| `--subreddits` | 7 個版 | Reddit subreddit 列表 |
 | `--limit` | `25` | Reddit 每版抓幾篇 (上限 100) |
 | `--comments` | off | Reddit: 進入文章抓留言 |
 | `--delay` | auto | 請求間隔 (PTT 0.5s, Reddit 1.0s) |
@@ -220,16 +220,29 @@ python scheduler.py --interval 5 --pages 2
 
 ### Grafana Dashboard 內建面板
 
+Dashboard 頂部有 `source` 下拉選單，可切換 PTT / Reddit 資料。
+
 | 面板 | 類型 | 說明 |
 |------|------|------|
 | 看板情緒分數 | Time Series | 平均 sentiment score 趨勢線，紅/黃/綠區間 |
-| 恐慌/貪婪指數 | Gauge | 畢業文 vs. 歐印文比例的即時儀表 |
-| 反指標趨勢 | Time Series | 畢業文/歐印文比例隨時間變化 |
-| 個股討論熱度 Top 10 | Bar Chart | 討論量最高的前 10 支股票 |
-| Buzz 異常標的 | Table | Z-score >= 2.0 的異常飆升股票 |
-| 板塊輪動 | Bar Chart | 各主題熱度排行 |
+| 恐慌/貪婪指數 | Gauge | 畢業文 vs. 歐印文比例的即時儀表 (PTT) |
+| 反指標趨勢 | Time Series | 畢業文/歐印文比例隨時間變化 (PTT) |
+| 個股討論熱度 Top 10 | Bar Chart | 討論量最高的前 10 支股票/幣種 |
+| Buzz 異常標的 | Table | Z-score >= 2.0 的異常飆升標的（點擊可跳 Google Finance） |
+| 板塊輪動 | Bar Chart | 各主題熱度排行 (PTT) |
 | 看多/看空文章數 | Stacked Bar | 每輪的 bullish/bearish/neutral 堆疊圖 |
-| 板塊熱度趨勢 | Time Series | 各板塊討論量的時間變化（觀察輪動轉折） |
+| 板塊熱度趨勢 | Time Series | 各板塊討論量的時間變化（觀察輪動轉折）(PTT) |
+| Subreddit 情緒比較 | Bar Chart | 各 subreddit 平均情緒分數比較 (Reddit) |
+| PTT vs Reddit 對比 | Dual Y-axis | PTT 台股 vs Reddit 美股情緒趨勢雙軸對比 |
+
+### 告警規則 (Alerting)
+
+| 規則 | 觸發條件 | 說明 |
+|------|----------|------|
+| Buzz Z-score > 3 | ticker buzz_score > 3.0 | Pump-and-Dump 疑似異常飆升 |
+| Extreme Greed | 歐印文比例 >= 15% | 市場過度樂觀，潛在過熱訊號 |
+
+> 告警規則透過 Grafana Unified Alerting 自動載入。可在 Grafana UI 設定通知管道（Email、Slack、Telegram 等）。
 
 ### 排程器參數
 
@@ -289,6 +302,16 @@ sector_report = tracker.analyze(posts)
 for h in sector_report.sectors:
     print(f"{h.sector}: {h.mention_count} mentions")
 ```
+
+## Reddit API 授權注意事項
+
+本工具使用 Reddit public JSON API（無需認證）進行資料抓取。
+
+> **重要**: Reddit 於 2023 年修改 API 政策，商業用途需申請 [Reddit Data API Enterprise](https://www.reddit.com/wiki/api/) 授權。
+> 本工具僅供**個人研究與學術用途**。如需商業化部署，請先取得 Reddit 官方授權。
+>
+> 建議正式環境改用 [PRAW](https://praw.readthedocs.io/) (Python Reddit API Wrapper) 搭配 OAuth2 認證，
+> 可獲得更高的 rate limit (600 req/min) 和更完整的 API 存取權限。
 
 ## License
 

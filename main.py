@@ -96,9 +96,13 @@ def main() -> None:
 
     # 寫入 InfluxDB
     if args.influxdb:
-        board_label = args.board if args.source == "ptt" else "reddit"
+        source = args.source
+        if source == "ptt":
+            board_label = args.board
+        else:
+            board_label = ",".join(args.subreddits or ["wsb"])
         store = InfluxStore()
-        count = store.write_all(output, board_label)
+        count = store.write_all(output, board_label, source=source)
         store.close()
         print(f"\n已寫入 {count} 筆資料到 InfluxDB。")
 

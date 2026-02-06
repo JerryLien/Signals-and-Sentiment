@@ -5,8 +5,10 @@ DEFAULT_SUBREDDITS: list[str] = [
     "wallstreetbets",
     "stocks",
     "investing",
+    "options",
     "cryptocurrency",
     "bitcoin",
+    "SatoshiStreetBets",
 ]
 
 # Reddit public JSON API 要求有意義的 User-Agent
