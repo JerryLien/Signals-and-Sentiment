@@ -1,4 +1,22 @@
 services:
+  # 爬蟲核心 — 定時爬取 PTT + Reddit 並寫入 InfluxDB
+  sentiment-engine:
+    build: .
+    container_name: sentiment-engine
+    volumes:
+      - ./data:/app/data
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ptt-dev-token
+      INFLUXDB_ORG: ptt-lab
+      INFLUXDB_BUCKET: ptt_sentiment
+      # Reddit PRAW (可選，不設定則 fallback 到 public JSON API)
+      # REDDIT_CLIENT_ID: your_client_id
+      # REDDIT_CLIENT_SECRET: your_client_secret
+    depends_on:
+      - influxdb
+    restart: unless-stopped
+
   influxdb:
     image: influxdb:2.7
     container_name: ptt-influxdb

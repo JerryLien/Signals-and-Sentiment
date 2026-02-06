@@ -29,7 +29,7 @@ ptt_scraper/                   # PTT 台股分析
 └── config.py
 
 reddit_scraper/                # Reddit 美股/加密貨幣分析
-├── scraper.py                 # 爬蟲 — Reddit public JSON API
+├── scraper.py                 # 爬蟲 — PRAW (推薦) / public JSON API (fallback)
 ├── sentiment.py               # upvote ratio + keyword 計分
 ├── entity_mapping.py          # $TICKER + WSB 暱稱辨識
 └── config.py
@@ -37,11 +37,13 @@ reddit_scraper/                # Reddit 美股/加密貨幣分析
 data/
 ├── aliases.json               # PTT 靜態暱稱表
 ├── reddit_aliases.json        # Reddit 暱稱表 (美股 + crypto)
+├── global_mapping.json        # 跨市場 ticker 對應 (2330 ↔ TSM)
 └── sectors.json               # 板塊關鍵字定義
 
 main.py                        # CLI 入口 (--source ptt|reddit)
 scheduler.py                   # 排程器 (InfluxDB 即時寫入)
-docker-compose.yml             # InfluxDB + Grafana
+Dockerfile                     # 爬蟲容器映像
+docker-compose.yml             # 一鍵部署 (爬蟲 + InfluxDB + Grafana)
 ```
 
 ## 安裝
@@ -200,22 +202,30 @@ AI伺服器、散熱、CPO光通訊、半導體、航運、金融、電動車、
   scheduler.py (每 N 分鐘)          瀏覽器 localhost:3000
 ```
 
-### Quick Start
+### Quick Start (一鍵部署)
 
 ```bash
-# 1. 啟動 InfluxDB + Grafana
+# 方法 1: Docker Compose 全自動 (推薦)
+# 自動建構爬蟲映像 + 啟動 InfluxDB + Grafana + 排程器
 docker compose up -d
 
-# 2. 單次寫入測試
+# 開啟 Grafana → http://localhost:3000 (admin / admin)
+# Dashboard 已自動建好: "Signals & Sentiment (PTT + Reddit)"
+```
+
+```bash
+# 方法 2: 手動開發模式
+# 1. 啟動 InfluxDB + Grafana (不含爬蟲)
+docker compose up -d influxdb grafana
+
+# 2. 本機安裝
 pip install -r requirements.txt
+
+# 3. 單次寫入測試
 python main.py --all --influxdb
 
-# 3. 開啟 Grafana
-#    http://localhost:3000 (admin / admin)
-#    Dashboard 已自動建好: "PTT Signals & Sentiment"
-
 # 4. 啟動排程器（每 5 分鐘自動爬取 + 寫入）
-python scheduler.py --interval 5 --pages 2
+python scheduler.py --source both --interval 5 --pages 2
 ```
 
 ### Grafana Dashboard 內建面板
@@ -263,6 +273,8 @@ python scheduler.py --help
 | `INFLUXDB_TOKEN` | `ptt-dev-token` | API Token |
 | `INFLUXDB_ORG` | `ptt-lab` | Organization |
 | `INFLUXDB_BUCKET` | `ptt_sentiment` | Bucket 名稱 |
+| `REDDIT_CLIENT_ID` | (無) | Reddit OAuth2 Client ID (啟用 PRAW) |
+| `REDDIT_CLIENT_SECRET` | (無) | Reddit OAuth2 Client Secret (啟用 PRAW) |
 
 > 正式環境請務必更換 Token 和密碼。docker-compose.yml 中的預設值僅供開發用。
 
@@ -303,15 +315,45 @@ for h in sector_report.sectors:
     print(f"{h.sector}: {h.mention_count} mentions")
 ```
 
-## Reddit API 授權注意事項
+## Reddit 後端選擇
 
-本工具使用 Reddit public JSON API（無需認證）進行資料抓取。
+Reddit 爬蟲支援兩種後端，自動偵測切換：
+
+| 後端 | Rate Limit | 認證 | 適用場景 |
+|------|-----------|------|---------|
+| **PRAW** (推薦) | 600 req/min | OAuth2 | 生產環境、排程器 |
+| Public JSON API | 60 req/min | 無 | 開發測試、一次性查詢 |
+
+### 使用 PRAW (推薦)
+
+1. 到 [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) 建立一個 "script" 類型的 app
+2. 設定環境變數：
+
+```bash
+export REDDIT_CLIENT_ID=your_client_id
+export REDDIT_CLIENT_SECRET=your_client_secret
+```
+
+或在 docker-compose.yml 中取消 `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` 的註解。
+
+系統啟動時會自動偵測：有 PRAW + 環境變數 → 用 PRAW，否則 → fallback 到 public JSON API。
 
 > **重要**: Reddit 於 2023 年修改 API 政策，商業用途需申請 [Reddit Data API Enterprise](https://www.reddit.com/wiki/api/) 授權。
 > 本工具僅供**個人研究與學術用途**。如需商業化部署，請先取得 Reddit 官方授權。
->
-> 建議正式環境改用 [PRAW](https://praw.readthedocs.io/) (Python Reddit API Wrapper) 搭配 OAuth2 認證，
-> 可獲得更高的 rate limit (600 req/min) 和更完整的 API 存取權限。
+
+## 跨市場 Ticker 對應 (Global Mapping)
+
+`data/global_mapping.json` 將 PTT 台股代碼對應到 Reddit 美股/ADR ticker，
+讓 Grafana 雙軸面板可以對比同一家公司在兩個市場的情緒。
+
+| PTT | Reddit | 公司 |
+|-----|--------|------|
+| 2330 | TSM | 台積電 / TSMC ADR |
+| 2303 | UMC | 聯電 / UMC ADR |
+| 3711 | ASX | 日月光 / ASE Technology ADR |
+| TAIEX | EWT | 加權指數 / iShares MSCI Taiwan ETF |
+
+板塊級對應也涵蓋：AI伺服器 ↔ NVDA/AMD/SMCI, 半導體 ↔ TSM/ASML/LRCX 等。
 
 ## License
 
