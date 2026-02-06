@@ -249,6 +249,7 @@ Dashboard 頂部有 `source` 下拉選單，可切換 PTT / Reddit 資料。
 | 板塊熱度趨勢 | Time Series | 各板塊討論量的時間變化（觀察輪動轉折）(PTT) |
 | Subreddit 情緒比較 | Bar Chart | 各 subreddit 平均情緒分數比較 (Reddit) |
 | PTT vs Reddit 對比 | Dual Y-axis | PTT 台股 vs Reddit 美股情緒趨勢雙軸對比 |
+| **台積電情緒溢價** | **Bar Chart** | **Reddit(TSM) - PTT(2330) 情緒差值，預測隔日外資買盤方向** |
 
 ### 告警規則 (Alerting)
 
