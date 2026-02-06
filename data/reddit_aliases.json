@@ -1,0 +1,79 @@
+{
+  "_comment": "Reddit 美股/加密貨幣暱稱對應表。格式: 暱稱(小寫) → [ticker, 名稱]。",
+
+  "the fruit company": ["AAPL", "Apple"],
+  "tim apple": ["AAPL", "Apple"],
+  "apple": ["AAPL", "Apple"],
+
+  "papa elon": ["TSLA", "Tesla"],
+  "tesla": ["TSLA", "Tesla"],
+
+  "mickey mouse": ["DIS", "Disney"],
+  "the mouse": ["DIS", "Disney"],
+  "disney": ["DIS", "Disney"],
+
+  "nvidia": ["NVDA", "NVIDIA"],
+  "jensen": ["NVDA", "NVIDIA"],
+  "leather jacket man": ["NVDA", "NVIDIA"],
+
+  "microsoft": ["MSFT", "Microsoft"],
+  "softie": ["MSFT", "Microsoft"],
+
+  "google": ["GOOGL", "Alphabet"],
+  "alphabet": ["GOOGL", "Alphabet"],
+
+  "amazon": ["AMZN", "Amazon"],
+  "bezos": ["AMZN", "Amazon"],
+
+  "meta": ["META", "Meta"],
+  "zuck": ["META", "Meta"],
+  "facebook": ["META", "Meta"],
+
+  "amd": ["AMD", "AMD"],
+  "su bae": ["AMD", "AMD"],
+  "lisa su": ["AMD", "AMD"],
+
+  "gamestop": ["GME", "GameStop"],
+  "gamestonk": ["GME", "GameStop"],
+
+  "palantir": ["PLTR", "Palantir"],
+
+  "cathie wood": ["ARKK", "ARK Innovation ETF"],
+  "ark": ["ARKK", "ARK Innovation ETF"],
+
+  "spy": ["SPY", "S&P 500 ETF"],
+  "qqq": ["QQQ", "Nasdaq-100 ETF"],
+
+  "jpow": ["FED", "Federal Reserve"],
+  "jerome powell": ["FED", "Federal Reserve"],
+  "the fed": ["FED", "Federal Reserve"],
+  "money printer": ["FED", "Federal Reserve"],
+
+  "bitcoin": ["BTC", "Bitcoin"],
+  "btc": ["BTC", "Bitcoin"],
+  "satoshi": ["BTC", "Bitcoin"],
+
+  "ethereum": ["ETH", "Ethereum"],
+  "eth": ["ETH", "Ethereum"],
+  "vitalik": ["ETH", "Ethereum"],
+
+  "solana": ["SOL", "Solana"],
+  "sol": ["SOL", "Solana"],
+
+  "dogecoin": ["DOGE", "Dogecoin"],
+  "doge": ["DOGE", "Dogecoin"],
+
+  "xrp": ["XRP", "Ripple"],
+  "ripple": ["XRP", "Ripple"],
+
+  "cardano": ["ADA", "Cardano"],
+  "ada": ["ADA", "Cardano"],
+
+  "chainlink": ["LINK", "Chainlink"],
+
+  "polygon": ["MATIC", "Polygon"],
+  "matic": ["MATIC", "Polygon"],
+
+  "avalanche": ["AVAX", "Avalanche"],
+  "avax": ["AVAX", "Avalanche"]
+}

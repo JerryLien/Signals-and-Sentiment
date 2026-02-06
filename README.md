@@ -1,30 +1,47 @@
-# PTT Signals and Sentiment
+# Signals and Sentiment
 
-受 [ICE Reddit Signals and Sentiment](https://www.ice.com/) 啟發的 PTT 股板情緒分析工具。
+受 [ICE Reddit Signals and Sentiment](https://www.ice.com/) 啟發的社群情緒分析工具。
 
-從 PTT 網頁版 (www.ptt.cc) 爬取文章與推文，提供四種分析模式：
+同時支援 **PTT (台股)** 與 **Reddit (美股/加密貨幣)** 雙資料源。
 
+### PTT 分析模式
 1. **情緒分析** — 推/噓加權計分，判斷看多/看空
 2. **反指標偵測** — 「畢業文指數」vs.「歐印文指數」，量化市場恐慌/過熱
 3. **異常熱度偵測** — 個股討論量 Z-score，Pump-and-Dump 早期預警
 4. **板塊輪動追蹤** — 主題關鍵字熱度排行，捕捉散戶資金關注方向
 
+### Reddit 分析模式
+5. **情緒分析** — upvote ratio + 看多/看空關鍵字 (calls/puts, moon/crash...)
+6. **實體辨識** — `$TICKER` 語法 + WSB 暱稱 ("su bae" → AMD, "leather jacket man" → NVDA)
+
 ## 架構
 
 ```
-ptt_scraper/
-├── scraper.py          # 爬蟲核心 — 抓取文章列表、內文、推文
-├── sentiment.py        # 情緒分析 — 推/噓/→ 加權計分
-├── entity_mapping.py   # 實體辨識 — 載入 JSON 暱稱表 → 證券代碼
-├── feed.py             # 動態暱稱更新 — 從 TWSE/TPEX API 取得股王等
-├── contrarian.py       # 反指標偵測 — 畢業文/歐印文分類
-├── buzz.py             # 異常熱度 — 個股 mention Z-score
-├── sectors.py          # 板塊輪動 — 主題關鍵字統計
-└── config.py           # 設定常數 (URL、Headers、權重)
+ptt_scraper/                   # PTT 台股分析
+├── scraper.py                 # 爬蟲 — www.ptt.cc
+├── sentiment.py               # 推/噓/→ 加權計分
+├── entity_mapping.py          # 台股暱稱 → 證券代碼
+├── feed.py                    # TWSE/TPEX 動態暱稱更新
+├── contrarian.py              # 畢業文/歐印文偵測
+├── buzz.py                    # 個股異常熱度 Z-score
+├── sectors.py                 # 板塊輪動
+├── store.py                   # InfluxDB 寫入
+└── config.py
+
+reddit_scraper/                # Reddit 美股/加密貨幣分析
+├── scraper.py                 # 爬蟲 — Reddit public JSON API
+├── sentiment.py               # upvote ratio + keyword 計分
+├── entity_mapping.py          # $TICKER + WSB 暱稱辨識
+└── config.py
+
 data/
-├── aliases.json        # 靜態暱稱對應表（手動維護）
-└── sectors.json        # 板塊/主題關鍵字定義
-main.py                 # CLI 入口
+├── aliases.json               # PTT 靜態暱稱表
+├── reddit_aliases.json        # Reddit 暱稱表 (美股 + crypto)
+└── sectors.json               # 板塊關鍵字定義
+
+main.py                        # CLI 入口 (--source ptt|reddit)
+scheduler.py                   # 排程器 (InfluxDB 即時寫入)
+docker-compose.yml             # InfluxDB + Grafana
 ```
 
 ## 安裝
@@ -37,38 +54,48 @@ pip install -r requirements.txt
 
 ## 使用方式
 
+### PTT (台股)
+
 ```bash
-# 基本情緒分析（預設）
+# 基本情緒分析
 python main.py
 
-# 反指標偵測
-python main.py --contrarian --pages 5
-
-# 異常熱度偵測
-python main.py --buzz --pages 3
-
-# 板塊輪動追蹤
-python main.py --sectors --pages 5
-
-# 全部分析一次跑完
+# 全部分析
 python main.py --all --pages 5
 
-# 先更新動態暱稱（股王、股后），再跑全分析，JSON 輸出
+# 更新動態暱稱 + 全分析 + JSON
 python main.py --update-aliases --all --pages 5 --json
+```
+
+### Reddit (美股/加密貨幣)
+
+```bash
+# 預設爬 5 個版 (wallstreetbets, stocks, investing, cryptocurrency, bitcoin)
+python main.py --source reddit
+
+# 指定 subreddit + 每版抓 50 篇
+python main.py --source reddit --subreddits wallstreetbets stocks --limit 50
+
+# 含留言分析（較慢但更準確）+ JSON 輸出
+python main.py --source reddit --comments --json
 ```
 
 ### CLI 參數
 
 | 參數 | 預設值 | 說明 |
 |------|--------|------|
-| `--board` | `Stock` | 目標看板 |
-| `--pages` | `1` | 往前爬幾頁 |
-| `--delay` | `0.5` | 每次請求間隔秒數 |
-| `--json` | off | 以 JSON 格式輸出 |
-| `--update-aliases` | off | 從 TWSE/TPEX 更新動態暱稱 |
-| `--contrarian` | off | 反指標偵測 |
+| `--source` | `ptt` | 資料源: `ptt` 或 `reddit` |
+| `--board` | `Stock` | PTT 看板 |
+| `--pages` | `1` | PTT 往前爬幾頁 |
+| `--subreddits` | 5 個版 | Reddit subreddit 列表 |
+| `--limit` | `25` | Reddit 每版抓幾篇 (上限 100) |
+| `--comments` | off | Reddit: 進入文章抓留言 |
+| `--delay` | auto | 請求間隔 (PTT 0.5s, Reddit 1.0s) |
+| `--json` | off | JSON 格式輸出 |
+| `--update-aliases` | off | PTT: 更新動態暱稱 |
+| `--contrarian` | off | PTT: 反指標偵測 |
 | `--buzz` | off | 異常熱度偵測 |
-| `--sectors` | off | 板塊輪動追蹤 |
+| `--sectors` | off | PTT: 板塊輪動追蹤 |
 | `--all` | off | 執行全部分析 |
 
 > 單獨指定 `--contrarian`、`--buzz`、`--sectors` 時只跑該分析。
@@ -78,7 +105,7 @@ python main.py --update-aliases --all --pages 5 --json
 
 ## 分析模式詳解
 
-### 1. 情緒分析 (Sentiment)
+### 1a. PTT 情緒分析
 
 基於推文標籤的加權分數：
 
