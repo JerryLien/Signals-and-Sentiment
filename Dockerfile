@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 複製程式碼
 COPY ptt_scraper/ ptt_scraper/
 COPY reddit_scraper/ reddit_scraper/
+COPY llm_agent/ llm_agent/
 COPY data/ data/
 COPY main.py scheduler.py ./
 

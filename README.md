@@ -34,6 +34,12 @@ reddit_scraper/                # Reddit 美股/加密貨幣分析
 ├── entity_mapping.py          # $TICKER + WSB 暱稱辨識
 └── config.py
 
+llm_agent/                     # LLM 異常歸因 (The "Why" Layer)
+├── config.py                  # 閾值與連線參數
+├── explainer.py               # InfluxDB 撈文 + LLM 摘要 (Anthropic/OpenAI)
+├── annotator.py               # Grafana Annotation 寫入
+└── monitor.py                 # 異常偵測主迴圈 (Z-score + Premium)
+
 data/
 ├── aliases.json               # PTT 靜態暱稱表
 ├── reddit_aliases.json        # Reddit 暱稱表 (美股 + crypto)
@@ -43,7 +49,7 @@ data/
 main.py                        # CLI 入口 (--source ptt|reddit)
 scheduler.py                   # 排程器 (InfluxDB 即時寫入)
 Dockerfile                     # 爬蟲容器映像
-docker-compose.yml             # 一鍵部署 (爬蟲 + InfluxDB + Grafana)
+docker-compose.yml             # 一鍵部署 (爬蟲 + InfluxDB + Grafana + LLM Agent)
 ```
 
 ## 安裝
@@ -271,6 +277,33 @@ python scheduler.py --help
   --interval   排程間隔分鐘數 (預設: 5)
 ```
 
+### LLM Agent — 異常事件自動歸因 (The "Why" Layer)
+
+當 Grafana 告警觸發（Z-score > 3 或情緒溢價突破 ±0.5），LLM Agent 會自動：
+
+1. 從 InfluxDB 撈出該時段權重最高的 Top 10 貼文標題
+2. 呼叫 LLM (Claude / GPT) 用一句話解釋「為什麼散戶情緒異常」
+3. 將解釋寫入 **Grafana Annotation**，標註在時間軸上
+
+效果：儀表板上會出現標註，例如：
+> **Buzz Z-score 異常 [TSM]** Reddit 情緒暴衝：主因是用戶熱議亞利桑那廠良率突破 90%
+
+設定方式：在 `.env` 中填入 LLM API Key 即可啟用。
+
+```bash
+# .env
+LLM_PROVIDER=anthropic          # 或 openai
+LLM_API_KEY=sk-ant-xxxxx        # 你的 API Key
+```
+
+手動測試（只跑一次偵測）：
+
+```bash
+python -m llm_agent.monitor --once
+```
+
+> **成本控制**: LLM 只在異常觸發時呼叫（不是每次輪詢），且同一 ticker 在 1 小時冷卻期內不重複觸發。
+
 ### 環境變數
 
 所有 secrets 統一透過 `.env` 檔管理（已在 `.gitignore` 中），不直接寫在 docker-compose.yml。
@@ -290,6 +323,10 @@ cp .env.example .env   # 複製範本後填入你的值
 | `REDDIT_CLIENT_ID` | (無) | Reddit OAuth2 Client ID (啟用 PRAW) |
 | `REDDIT_CLIENT_SECRET` | (無) | Reddit OAuth2 Client Secret (啟用 PRAW) |
 | `GF_SECURITY_ADMIN_PASSWORD` | `admin` | Grafana 管理員密碼 |
+| `LLM_PROVIDER` | `anthropic` | LLM 供應商 (`anthropic` / `openai`) |
+| `LLM_API_KEY` | (無) | LLM API Key (未設定則 LLM Agent 不呼叫 LLM) |
+| `LLM_MODEL` | (自動) | 模型名稱 (留空=預設: claude-sonnet-4-5 / gpt-4o-mini) |
+| `LLM_POLL_INTERVAL` | `300` | 異常偵測輪詢間隔 (秒) |
 
 > **安全提醒**: 正式環境請務必在 `.env` 中更換所有預設 Token 和密碼。
 > `.env` 已在 `.gitignore` 中，不會被 commit 到版本控制。
