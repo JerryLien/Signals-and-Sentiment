@@ -23,6 +23,7 @@ from ptt_scraper import (
     SentimentScorer,
     summarize_contrarian,
     update_dynamic_aliases,
+    validate_influxdb_env,
 )
 from reddit_scraper import RedditEntityMapper, RedditScraper, RedditSentimentScorer
 
@@ -125,6 +126,7 @@ def main() -> None:
 
     # 寫入 InfluxDB
     if args.influxdb:
+        validate_influxdb_env()
         source = args.source
         if source == "ptt":
             board_label = args.board

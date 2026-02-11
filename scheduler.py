@@ -24,7 +24,7 @@ from ptt_scraper import (
     SentimentScorer,
     summarize_contrarian,
 )
-from ptt_scraper.store import InfluxStore
+from ptt_scraper.store import InfluxStore, validate_influxdb_env
 from reddit_scraper import RedditEntityMapper, RedditScraper, RedditSentimentScorer
 
 logger = logging.getLogger(__name__)
@@ -265,6 +265,7 @@ def main() -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+    validate_influxdb_env()
     store = InfluxStore()
 
     # Graceful shutdown
