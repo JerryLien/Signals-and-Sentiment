@@ -11,6 +11,7 @@
 
 import argparse
 import json
+import logging
 import sys
 
 from ptt_scraper import (
@@ -27,6 +28,12 @@ from reddit_scraper import RedditEntityMapper, RedditScraper, RedditSentimentSco
 
 
 def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
     parser = argparse.ArgumentParser(
         description="Signals and Sentiment — PTT / Reddit 情緒分析",
     )

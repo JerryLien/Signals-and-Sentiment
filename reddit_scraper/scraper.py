@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from abc import ABC, abstractmethod
@@ -23,7 +24,10 @@ from reddit_scraper.config import (
     HEADERS,
     REDDIT_BASE_URL,
     REQUEST_DELAY,
+    REQUEST_TIMEOUT,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -120,7 +124,7 @@ class _PrawBackend(_Backend):
                     )
                 )
         except Exception as exc:
-            print(f"[WARN] PRAW 無法取得 r/{subreddit}: {exc}")
+            logger.warning("PRAW 無法取得 r/%s: %s", subreddit, exc)
         return posts
 
     def fetch_comments(self, post: RedditPost) -> list[RedditComment]:
@@ -172,15 +176,15 @@ class _JsonBackend(_Backend):
         params = {"limit": limit, "raw_json": 1}
 
         try:
-            resp = self.session.get(url, params=params, timeout=15)
+            resp = self.session.get(url, params=params, timeout=REQUEST_TIMEOUT)
             if resp.status_code == 429:
                 wait = int(resp.headers.get("Retry-After", 10))
-                print(f"[WARN] r/{subreddit} 被 rate limit，等待 {wait}s...")
+                logger.warning("r/%s 被 rate limit，等待 %ds...", subreddit, wait)
                 time.sleep(wait)
-                resp = self.session.get(url, params=params, timeout=15)
+                resp = self.session.get(url, params=params, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.RequestException as exc:
-            print(f"[WARN] 無法取得 r/{subreddit}: {exc}")
+            logger.warning("無法取得 r/%s: %s", subreddit, exc)
             return []
 
         time.sleep(self.delay)
@@ -216,7 +220,7 @@ class _JsonBackend(_Backend):
         params = {"limit": 50, "raw_json": 1}
 
         try:
-            resp = self.session.get(url, params=params, timeout=15)
+            resp = self.session.get(url, params=params, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.RequestException:
             return []
@@ -261,13 +265,15 @@ def _auto_select_backend(delay: float) -> _Backend:
 
             user_agent = HEADERS["User-Agent"]
             backend = _PrawBackend(client_id, client_secret, user_agent)
-            print("[INFO] 使用 PRAW 後端 (OAuth2, 600 req/min)")
+            logger.info("使用 PRAW 後端 (OAuth2, 600 req/min)")
             return backend
         except ImportError:
-            print("[WARN] REDDIT_CLIENT_ID 已設定但 praw 未安裝，" "fallback 到 public JSON API。")
-            print("       pip install praw")
+            logger.warning(
+                "REDDIT_CLIENT_ID 已設定但 praw 未安裝，fallback 到 public JSON API。"
+                " pip install praw"
+            )
 
-    print("[INFO] 使用 public JSON API 後端 (60 req/min)")
+    logger.info("使用 public JSON API 後端 (60 req/min)")
     return _JsonBackend(delay)
 
 

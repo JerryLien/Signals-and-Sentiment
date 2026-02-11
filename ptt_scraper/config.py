@@ -14,6 +14,9 @@ HEADERS = {
 # 每次請求間的延遲秒數，避免被鎖 IP
 REQUEST_DELAY = 0.5
 
+# HTTP 請求逾時秒數
+REQUEST_TIMEOUT = 15
+
 # 推文情緒權重
 PUSH_WEIGHT = 1.0  # 推
 BOO_WEIGHT = -1.5  # 噓

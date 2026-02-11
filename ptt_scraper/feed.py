@@ -7,10 +7,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 # TWSE / TPEX Open Data API（免費、免 API key）
 TWSE_QUOTES_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
@@ -76,15 +79,15 @@ def compute_dynamic_aliases() -> dict[str, list[str]]:
     try:
         all_quotes.extend(_fetch_twse_quotes())
     except requests.RequestException as exc:
-        print(f"[WARN] 無法取得 TWSE 行情: {exc}")
+        logger.warning("無法取得 TWSE 行情: %s", exc)
 
     try:
         all_quotes.extend(_fetch_tpex_quotes())
     except requests.RequestException as exc:
-        print(f"[WARN] 無法取得 TPEX 行情: {exc}")
+        logger.warning("無法取得 TPEX 行情: %s", exc)
 
     if not all_quotes:
-        print("[WARN] 無法取得任何行情資料，動態暱稱未更新。")
+        logger.warning("無法取得任何行情資料，動態暱稱未更新。")
         return {}
 
     # 依收盤價降冪排序
@@ -125,8 +128,8 @@ def update_dynamic_aliases() -> Path:
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"動態暱稱已更新 → {DYNAMIC_ALIASES_PATH}")
+    logger.info("動態暱稱已更新 → %s", DYNAMIC_ALIASES_PATH)
     for name, (code, company) in aliases.items():
-        print(f"  {name} → {code} {company}")
+        logger.info("  %s → %s %s", name, code, company)
 
     return DYNAMIC_ALIASES_PATH
