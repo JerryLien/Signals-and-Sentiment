@@ -19,3 +19,7 @@ env/
 data/dynamic_aliases.json
 data/buzz_history.json
 output/
+# Test / coverage artifacts
+.coverage
+htmlcov/
+.pytest_cache/
