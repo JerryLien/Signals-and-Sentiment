@@ -1,6 +1,6 @@
 """Tests for ptt_scraper.feed module."""
 
-from ptt_scraper.feed import _parse_price, compute_dynamic_aliases
+from ptt_scraper.feed import _parse_price
 
 
 class TestParsePrice:

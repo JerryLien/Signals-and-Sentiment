@@ -67,11 +67,7 @@ class SentimentScorer:
             else:
                 arrow += 1
 
-        score = (
-            push * self.push_weight
-            + boo * self.boo_weight
-            + arrow * self.arrow_weight
-        )
+        score = push * self.push_weight + boo * self.boo_weight + arrow * self.arrow_weight
         return push, boo, arrow, score
 
     def classify(self, score: float) -> str:

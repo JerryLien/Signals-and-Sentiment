@@ -32,59 +32,81 @@ def main() -> None:
     )
     # 資料源
     parser.add_argument(
-        "--source", choices=["ptt", "reddit"], default="ptt",
+        "--source",
+        choices=["ptt", "reddit"],
+        default="ptt",
         help="資料源 (預設: ptt)",
     )
     # PTT 參數
     parser.add_argument(
-        "--board", default="Stock", help="PTT 看板 (預設: Stock)",
+        "--board",
+        default="Stock",
+        help="PTT 看板 (預設: Stock)",
     )
     parser.add_argument(
-        "--pages", type=int, default=1, help="PTT 往前爬幾頁 (預設: 1)",
+        "--pages",
+        type=int,
+        default=1,
+        help="PTT 往前爬幾頁 (預設: 1)",
     )
     # Reddit 參數
     parser.add_argument(
-        "--subreddits", nargs="+", default=None,
+        "--subreddits",
+        nargs="+",
+        default=None,
         help="Reddit subreddit 列表 (預設: wallstreetbets stocks investing cryptocurrency bitcoin)",
     )
     parser.add_argument(
-        "--limit", type=int, default=25,
+        "--limit",
+        type=int,
+        default=25,
         help="Reddit 每個 subreddit 抓幾篇 (預設: 25, 上限 100)",
     )
     parser.add_argument(
-        "--comments", action="store_true",
+        "--comments",
+        action="store_true",
         help="Reddit: 是否進入文章抓留言 (較慢但更準確)",
     )
     # 共用參數
     parser.add_argument(
-        "--delay", type=float, default=None,
+        "--delay",
+        type=float,
+        default=None,
         help="每次請求間隔秒數 (PTT 預設 0.5, Reddit 預設 1.0)",
     )
     parser.add_argument(
-        "--json", action="store_true", help="以 JSON 格式輸出結果",
+        "--json",
+        action="store_true",
+        help="以 JSON 格式輸出結果",
     )
     parser.add_argument(
-        "--update-aliases", action="store_true",
+        "--update-aliases",
+        action="store_true",
         help="PTT: 從 TWSE/TPEX 更新動態暱稱（股王、股后等）",
     )
     parser.add_argument(
-        "--contrarian", action="store_true",
+        "--contrarian",
+        action="store_true",
         help="PTT: 反指標偵測（畢業文 / 歐印文）",
     )
     parser.add_argument(
-        "--buzz", action="store_true",
+        "--buzz",
+        action="store_true",
         help="異常熱度偵測：個股討論量 Pump-and-Dump 預警",
     )
     parser.add_argument(
-        "--sectors", action="store_true",
+        "--sectors",
+        action="store_true",
         help="PTT: 板塊輪動追蹤",
     )
     parser.add_argument(
-        "--all", action="store_true",
+        "--all",
+        action="store_true",
         help="執行全部分析",
     )
     parser.add_argument(
-        "--influxdb", action="store_true",
+        "--influxdb",
+        action="store_true",
         help="將結果寫入 InfluxDB（需先 docker compose up）",
     )
     args = parser.parse_args()
@@ -117,6 +139,7 @@ def main() -> None:
 # PTT 分析流程
 # ------------------------------------------------------------------
 
+
 def _run_ptt(args) -> dict:
     if args.update_aliases:
         update_dynamic_aliases()
@@ -145,20 +168,22 @@ def _run_ptt(args) -> dict:
         for post in posts:
             sentiment = scorer.analyze_post(post)
             entities = mapper.find_entities(post.title + " " + post.content)
-            results.append({
-                "title": post.title,
-                "url": post.url,
-                "author": post.author,
-                "date": post.date,
-                "sentiment": {
-                    "score": sentiment.score,
-                    "label": sentiment.label,
-                    "push": sentiment.push_count,
-                    "boo": sentiment.boo_count,
-                    "arrow": sentiment.arrow_count,
-                },
-                "entities": entities,
-            })
+            results.append(
+                {
+                    "title": post.title,
+                    "url": post.url,
+                    "author": post.author,
+                    "date": post.date,
+                    "sentiment": {
+                        "score": sentiment.score,
+                        "label": sentiment.label,
+                        "push": sentiment.push_count,
+                        "boo": sentiment.boo_count,
+                        "arrow": sentiment.arrow_count,
+                    },
+                    "entities": entities,
+                }
+            )
         output["sentiment"] = results
 
     if run_contrarian:
@@ -225,6 +250,7 @@ def _run_ptt(args) -> dict:
 # Reddit 分析流程
 # ------------------------------------------------------------------
 
+
 def _run_reddit(args) -> dict:
     delay = args.delay if args.delay is not None else 1.0
     scraper = RedditScraper(
@@ -249,21 +275,23 @@ def _run_reddit(args) -> dict:
     for post in posts:
         sentiment = scorer.analyze_post(post)
         entities = mapper.find_entities(post.title + " " + post.selftext)
-        results.append({
-            "title": post.title,
-            "url": post.url,
-            "author": post.author,
-            "subreddit": post.subreddit,
-            "sentiment": {
-                "score": sentiment.score,
-                "label": sentiment.label,
-                "upvote_ratio": sentiment.upvote_ratio,
-                "post_score": sentiment.post_score,
-                "bullish_hits": sentiment.bullish_hits,
-                "bearish_hits": sentiment.bearish_hits,
-            },
-            "entities": entities,
-        })
+        results.append(
+            {
+                "title": post.title,
+                "url": post.url,
+                "author": post.author,
+                "subreddit": post.subreddit,
+                "sentiment": {
+                    "score": sentiment.score,
+                    "label": sentiment.label,
+                    "upvote_ratio": sentiment.upvote_ratio,
+                    "post_score": sentiment.post_score,
+                    "bullish_hits": sentiment.bullish_hits,
+                    "bearish_hits": sentiment.bearish_hits,
+                },
+                "entities": entities,
+            }
+        )
     output["sentiment"] = results
 
     return output
@@ -272,6 +300,7 @@ def _run_reddit(args) -> dict:
 # ------------------------------------------------------------------
 # 表格輸出
 # ------------------------------------------------------------------
+
 
 def _print_output(output: dict) -> None:
     if "sentiment" in output:
@@ -315,13 +344,11 @@ def _print_sentiment_table(results: list[dict]) -> None:
             s = r["sentiment"]
             title = r["title"][:38]
             entities_str = ", ".join(
-                f"{e['ticker']}({e['name']})" if e["name"] else e["ticker"]
-                for e in r["entities"]
+                f"{e['ticker']}({e['name']})" if e["name"] else e["ticker"] for e in r["entities"]
             )
             label = label_map.get(s["label"], s["label"])
-            print(
-                f"{title:<40} {label:>8} {s['push']:>4} {s['boo']:>4} {s['arrow']:>4} {entities_str}"
-            )
+            line = f"{title:<40} {label:>8} {s['push']:>4} {s['boo']:>4} {s['arrow']:>4}"
+            print(f"{line} {entities_str}")
 
     total = len(results)
     bullish = sum(1 for r in results if r["sentiment"]["label"] == "bullish")
@@ -344,10 +371,13 @@ def _print_contrarian(data: dict) -> None:
     print("  反指標偵測 (Contrarian Indicator)")
     print(f"{'='*90}")
     print(f"市場訊號: {signal_map.get(data['market_signal'], data['market_signal'])}")
-    print(f"畢業文: {data['capitulation_count']}/{data['total_posts']} "
-          f"({data['capitulation_ratio']:.1%})")
-    print(f"歐印文: {data['euphoria_count']}/{data['total_posts']} "
-          f"({data['euphoria_ratio']:.1%})")
+    print(
+        f"畢業文: {data['capitulation_count']}/{data['total_posts']} "
+        f"({data['capitulation_ratio']:.1%})"
+    )
+    print(
+        f"歐印文: {data['euphoria_count']}/{data['total_posts']} " f"({data['euphoria_ratio']:.1%})"
+    )
 
     if data["capitulation_posts"]:
         print("\n畢業文列表:")

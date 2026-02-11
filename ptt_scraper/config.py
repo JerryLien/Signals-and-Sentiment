@@ -15,6 +15,6 @@ HEADERS = {
 REQUEST_DELAY = 0.5
 
 # 推文情緒權重
-PUSH_WEIGHT = 1.0    # 推
-BOO_WEIGHT = -1.5    # 噓
-ARROW_WEIGHT = 0.0   # → (中性)
+PUSH_WEIGHT = 1.0  # 推
+BOO_WEIGHT = -1.5  # 噓
+ARROW_WEIGHT = 0.0  # → (中性)

@@ -70,14 +70,16 @@ class TestDetectContrarian:
 
     def test_signal_type_property(self):
         signal = ContrarianSignal(
-            title="test", url="http://test",
+            title="test",
+            url="http://test",
             capitulation_hits=["畢業", "賠光"],
             euphoria_hits=[],
         )
         assert signal.signal_type == "capitulation"
 
         signal2 = ContrarianSignal(
-            title="test", url="http://test",
+            title="test",
+            url="http://test",
             capitulation_hits=[],
             euphoria_hits=["歐印", "梭哈"],
         )
@@ -104,9 +106,7 @@ class TestSummarizeContrarian:
         capitulation_posts = [
             _make_post(title=f"畢業了{i}", content="賠光認賠斷頭") for i in range(4)
         ]
-        normal_posts = [
-            _make_post(title=f"正常{i}", content="看看後續發展") for i in range(16)
-        ]
+        normal_posts = [_make_post(title=f"正常{i}", content="看看後續發展") for i in range(16)]
         summary = summarize_contrarian(capitulation_posts + normal_posts)
         assert summary.total_posts == 20
         assert summary.capitulation_count == 4
@@ -117,9 +117,7 @@ class TestSummarizeContrarian:
         euphoria_posts = [
             _make_post(title=f"歐印{i}", content="梭哈睏霸數錢財富自由") for i in range(4)
         ]
-        normal_posts = [
-            _make_post(title=f"正常{i}", content="觀望中") for i in range(16)
-        ]
+        normal_posts = [_make_post(title=f"正常{i}", content="觀望中") for i in range(16)]
         summary = summarize_contrarian(euphoria_posts + normal_posts)
         assert summary.euphoria_count == 4
         assert summary.market_signal == "extreme_greed"

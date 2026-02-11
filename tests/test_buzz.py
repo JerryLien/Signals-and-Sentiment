@@ -1,13 +1,11 @@
 """Tests for ptt_scraper.buzz module."""
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from ptt_scraper.buzz import BuzzDetector, BuzzReport, TickerBuzz
-from ptt_scraper.entity_mapping import EntityMapper
 from ptt_scraper.scraper import Comment, Post
 
 
@@ -81,8 +79,7 @@ class TestBuzzDetector:
     def test_anomaly_detection(self):
         detector = BuzzDetector(anomaly_threshold=2.0)
         detector.history = [
-            {"date": f"2026-01-{i:02d}", "mentions": {"2330": 5}}
-            for i in range(1, 11)
+            {"date": f"2026-01-{i:02d}", "mentions": {"2330": 5}} for i in range(1, 11)
         ]
         # All historical values are 5, std = 0
         # _compute_buzz_score with std==0 returns (current - mean)
@@ -96,8 +93,10 @@ class TestBuzzDetector:
         detector = BuzzDetector()
         detector.history = []
 
-        with patch("ptt_scraper.buzz._BUZZ_HISTORY_PATH", history_path), \
-             patch("ptt_scraper.buzz._DATA_DIR", tmp_path):
+        with (
+            patch("ptt_scraper.buzz._BUZZ_HISTORY_PATH", history_path),
+            patch("ptt_scraper.buzz._DATA_DIR", tmp_path),
+        ):
             posts = [_make_post(title="台積電", content="2330")]
             detector.save_snapshot(posts)
             assert history_path.exists()
@@ -109,12 +108,13 @@ class TestBuzzDetector:
         history_path = tmp_path / "buzz_history.json"
         detector = BuzzDetector(history_window=5)
         detector.history = [
-            {"date": f"2026-01-{i:02d}", "mentions": {"2330": i}}
-            for i in range(1, 6)  # 5 entries
+            {"date": f"2026-01-{i:02d}", "mentions": {"2330": i}} for i in range(1, 6)  # 5 entries
         ]
 
-        with patch("ptt_scraper.buzz._BUZZ_HISTORY_PATH", history_path), \
-             patch("ptt_scraper.buzz._DATA_DIR", tmp_path):
+        with (
+            patch("ptt_scraper.buzz._BUZZ_HISTORY_PATH", history_path),
+            patch("ptt_scraper.buzz._DATA_DIR", tmp_path),
+        ):
             posts = [_make_post(title="台積電")]
             detector.save_snapshot(posts)
             assert len(detector.history) == 5  # capped at window
@@ -136,8 +136,11 @@ class TestBuzzDetector:
 class TestTickerBuzz:
     def test_dataclass_fields(self):
         tb = TickerBuzz(
-            ticker="2330", name="台積電", mention_count=10,
-            buzz_score=3.5, is_anomaly=True,
+            ticker="2330",
+            name="台積電",
+            mention_count=10,
+            buzz_score=3.5,
+            is_anomaly=True,
         )
         assert tb.ticker == "2330"
         assert tb.is_anomaly is True

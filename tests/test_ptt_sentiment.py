@@ -102,8 +102,13 @@ class TestSentimentScorer:
 
     def test_sentiment_result_total_comments(self):
         result = SentimentResult(
-            title="test", url="http://test", push_count=3, boo_count=2,
-            arrow_count=5, score=0.0, label="neutral",
+            title="test",
+            url="http://test",
+            push_count=3,
+            boo_count=2,
+            arrow_count=5,
+            score=0.0,
+            label="neutral",
         )
         assert result.total_comments == 10
 

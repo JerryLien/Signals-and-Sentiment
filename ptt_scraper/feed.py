@@ -13,12 +13,8 @@ from pathlib import Path
 import requests
 
 # TWSE / TPEX Open Data API（免費、免 API key）
-TWSE_QUOTES_URL = (
-    "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-)
-TPEX_QUOTES_URL = (
-    "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
-)
+TWSE_QUOTES_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+TPEX_QUOTES_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DYNAMIC_ALIASES_PATH = _DATA_DIR / "dynamic_aliases.json"

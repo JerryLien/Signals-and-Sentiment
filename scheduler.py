@@ -50,20 +50,22 @@ def run_ptt(board: str, pages: int, delay: float, store: InfluxStore) -> None:
     for post in posts:
         sentiment = scorer.analyze_post(post)
         entities = mapper.find_entities(post.title + " " + post.content)
-        results.append({
-            "title": post.title,
-            "url": post.url,
-            "author": post.author,
-            "date": post.date,
-            "sentiment": {
-                "score": sentiment.score,
-                "label": sentiment.label,
-                "push": sentiment.push_count,
-                "boo": sentiment.boo_count,
-                "arrow": sentiment.arrow_count,
-            },
-            "entities": entities,
-        })
+        results.append(
+            {
+                "title": post.title,
+                "url": post.url,
+                "author": post.author,
+                "date": post.date,
+                "sentiment": {
+                    "score": sentiment.score,
+                    "label": sentiment.label,
+                    "push": sentiment.push_count,
+                    "boo": sentiment.boo_count,
+                    "arrow": sentiment.arrow_count,
+                },
+                "entities": entities,
+            }
+        )
     output["sentiment"] = results
 
     # 反指標
@@ -117,9 +119,11 @@ def run_ptt(board: str, pages: int, delay: float, store: InfluxStore) -> None:
     # 簡要摘要
     bullish = sum(1 for r in results if r["sentiment"]["label"] == "bullish")
     bearish = sum(1 for r in results if r["sentiment"]["label"] == "bearish")
-    print(f"[{ts}] PTT 情緒: 看多={bullish} 看空={bearish} | "
-          f"反指標: {summary.market_signal} | "
-          f"熱門板塊: {sector_report.top_sector or 'N/A'}")
+    print(
+        f"[{ts}] PTT 情緒: 看多={bullish} 看空={bearish} | "
+        f"反指標: {summary.market_signal} | "
+        f"熱門板塊: {sector_report.top_sector or 'N/A'}"
+    )
 
 
 def run_reddit(
@@ -149,21 +153,23 @@ def run_reddit(
     for post in posts:
         sentiment = scorer.analyze_post(post)
         entities = mapper.find_entities(post.title + " " + post.selftext)
-        results.append({
-            "title": post.title,
-            "url": post.url,
-            "author": post.author,
-            "subreddit": post.subreddit,
-            "sentiment": {
-                "score": sentiment.score,
-                "label": sentiment.label,
-                "upvote_ratio": sentiment.upvote_ratio,
-                "post_score": sentiment.post_score,
-                "bullish_hits": sentiment.bullish_hits,
-                "bearish_hits": sentiment.bearish_hits,
-            },
-            "entities": entities,
-        })
+        results.append(
+            {
+                "title": post.title,
+                "url": post.url,
+                "author": post.author,
+                "subreddit": post.subreddit,
+                "sentiment": {
+                    "score": sentiment.score,
+                    "label": sentiment.label,
+                    "upvote_ratio": sentiment.upvote_ratio,
+                    "post_score": sentiment.post_score,
+                    "bullish_hits": sentiment.bullish_hits,
+                    "bearish_hits": sentiment.bearish_hits,
+                },
+                "entities": entities,
+            }
+        )
     output["sentiment"] = results
 
     # 寫入 InfluxDB
@@ -181,28 +187,45 @@ def main() -> None:
         description="即時監控排程器 — 定時爬取 PTT / Reddit 並寫入 InfluxDB",
     )
     parser.add_argument(
-        "--source", choices=["ptt", "reddit", "both"], default="ptt",
+        "--source",
+        choices=["ptt", "reddit", "both"],
+        default="ptt",
         help="資料源 (預設: ptt)",
     )
     parser.add_argument(
-        "--board", default="Stock", help="PTT 目標看板 (預設: Stock)",
+        "--board",
+        default="Stock",
+        help="PTT 目標看板 (預設: Stock)",
     )
     parser.add_argument(
-        "--pages", type=int, default=1, help="PTT 每輪爬幾頁 (預設: 1)",
+        "--pages",
+        type=int,
+        default=1,
+        help="PTT 每輪爬幾頁 (預設: 1)",
     )
     parser.add_argument(
-        "--subreddits", nargs="+", default=None,
+        "--subreddits",
+        nargs="+",
+        default=None,
         help="Reddit subreddit 列表",
     )
     parser.add_argument(
-        "--limit", type=int, default=25,
+        "--limit",
+        type=int,
+        default=25,
         help="Reddit 每版抓幾篇 (預設: 25)",
     )
     parser.add_argument(
-        "--delay", type=float, default=0.5, help="HTTP 請求間隔秒數 (預設: 0.5)",
+        "--delay",
+        type=float,
+        default=0.5,
+        help="HTTP 請求間隔秒數 (預設: 0.5)",
     )
     parser.add_argument(
-        "--interval", type=int, default=5, help="排程間隔分鐘數 (預設: 5)",
+        "--interval",
+        type=int,
+        default=5,
+        help="排程間隔分鐘數 (預設: 5)",
     )
     args = parser.parse_args()
 
@@ -223,7 +246,7 @@ def main() -> None:
     if args.source in ("reddit", "both"):
         sources.append("reddit")
 
-    print(f"即時監控已啟動")
+    print("即時監控已啟動")
     print(f"  資料源: {', '.join(sources)}")
     if "ptt" in sources:
         print(f"  PTT 看板: {args.board}, 頁數: {args.pages}")
@@ -232,7 +255,7 @@ def main() -> None:
         print(f"  Reddit: {', '.join(subs)}, 每版 {args.limit} 篇")
     print(f"  間隔: 每 {args.interval} 分鐘")
     print(f"  InfluxDB: {store.client.url}")
-    print(f"按 Ctrl+C 停止。\n")
+    print("按 Ctrl+C 停止。\n")
 
     while True:
         try:

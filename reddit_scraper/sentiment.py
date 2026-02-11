@@ -13,22 +13,54 @@ from dataclasses import dataclass
 
 from reddit_scraper.scraper import RedditPost
 
-
 # WSB / Reddit 投資版常見的看多/看空關鍵字
 _BULLISH_KEYWORDS: list[str] = [
-    "bullish", "calls", "long", "buy", "moon", "to the moon",
-    "rocket", "diamond hands", "tendies", "undervalued",
-    "breakout", "squeeze", "gamma squeeze", "short squeeze",
-    "going up", "buy the dip", "btfd", "loading up",
-    "all in", "yolo", "lets go", "lfg",
+    "bullish",
+    "calls",
+    "long",
+    "buy",
+    "moon",
+    "to the moon",
+    "rocket",
+    "diamond hands",
+    "tendies",
+    "undervalued",
+    "breakout",
+    "squeeze",
+    "gamma squeeze",
+    "short squeeze",
+    "going up",
+    "buy the dip",
+    "btfd",
+    "loading up",
+    "all in",
+    "yolo",
+    "lets go",
+    "lfg",
 ]
 
 _BEARISH_KEYWORDS: list[str] = [
-    "bearish", "puts", "short", "sell", "crash", "dump",
-    "overvalued", "bubble", "bag holder", "bagholding",
-    "loss porn", "guh", "rip", "dead cat bounce",
-    "going down", "top is in", "exit", "taking profits",
-    "rug pull", "scam", "ponzi",
+    "bearish",
+    "puts",
+    "short",
+    "sell",
+    "crash",
+    "dump",
+    "overvalued",
+    "bubble",
+    "bag holder",
+    "bagholding",
+    "loss porn",
+    "guh",
+    "rip",
+    "dead cat bounce",
+    "going down",
+    "top is in",
+    "exit",
+    "taking profits",
+    "rug pull",
+    "scam",
+    "ponzi",
 ]
 
 _BULLISH_RE = re.compile(
@@ -48,12 +80,12 @@ class RedditSentimentResult:
     title: str
     url: str
     subreddit: str
-    score: float           # 綜合情緒分數
-    label: str             # bullish / bearish / neutral
-    upvote_ratio: float    # Reddit 原始 upvote ratio
-    post_score: int        # upvotes - downvotes
-    bullish_hits: int      # 看多關鍵字命中數
-    bearish_hits: int      # 看空關鍵字命中數
+    score: float  # 綜合情緒分數
+    label: str  # bullish / bearish / neutral
+    upvote_ratio: float  # Reddit 原始 upvote ratio
+    post_score: int  # upvotes - downvotes
+    bullish_hits: int  # 看多關鍵字命中數
+    bearish_hits: int  # 看空關鍵字命中數
 
 
 class RedditSentimentScorer:

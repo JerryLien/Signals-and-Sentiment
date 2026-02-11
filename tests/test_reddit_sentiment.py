@@ -1,7 +1,5 @@
 """Tests for reddit_scraper.sentiment module."""
 
-import pytest
-
 from reddit_scraper.scraper import RedditComment, RedditPost
 from reddit_scraper.sentiment import RedditSentimentResult, RedditSentimentScorer
 

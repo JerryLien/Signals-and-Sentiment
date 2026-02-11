@@ -69,10 +69,13 @@ class TestSectorTracker:
             assert report.sectors[0].mention_count >= report.sectors[1].mention_count
 
     def test_top_sector_property(self):
-        report = SectorReport(total_posts=1, sectors=[
-            SectorHeat(sector="AI伺服器", mention_count=10),
-            SectorHeat(sector="航運", mention_count=5),
-        ])
+        report = SectorReport(
+            total_posts=1,
+            sectors=[
+                SectorHeat(sector="AI伺服器", mention_count=10),
+                SectorHeat(sector="航運", mention_count=5),
+            ],
+        )
         assert report.top_sector == "AI伺服器"
 
     def test_top_sector_empty(self):
@@ -81,9 +84,7 @@ class TestSectorTracker:
 
     def test_sample_titles_max_three(self):
         tracker = SectorTracker()
-        posts = [
-            _make_post(title=f"半導體新聞{i}", content="晶圓代工") for i in range(5)
-        ]
+        posts = [_make_post(title=f"半導體新聞{i}", content="晶圓代工") for i in range(5)]
         report = tracker.analyze(posts)
         semi = next((s for s in report.sectors if s.sector == "半導體"), None)
         if semi:
@@ -102,9 +103,11 @@ class TestSectorTracker:
             assert len(lower_kws) == len(set(lower_kws))
 
     def test_extra_sectors(self):
-        tracker = SectorTracker(extra_sectors={
-            "太空": {"keywords": ["火箭", "衛星", "spacex"], "tickers": []},
-        })
+        tracker = SectorTracker(
+            extra_sectors={
+                "太空": {"keywords": ["火箭", "衛星", "spacex"], "tickers": []},
+            }
+        )
         posts = [_make_post(title="火箭發射成功", content="衛星通訊概念股")]
         report = tracker.analyze(posts)
         sector_names = [s.sector for s in report.sectors]

@@ -55,7 +55,10 @@ class InfluxStore:
     # ------------------------------------------------------------------
 
     def write_sentiment(
-        self, results: list[dict], board: str, source: str = "ptt",
+        self,
+        results: list[dict],
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """寫入每篇文章的情緒分數 + 看板彙總。
 
@@ -127,7 +130,10 @@ class InfluxStore:
         return len(points)
 
     def write_contrarian(
-        self, data: dict, board: str, source: str = "ptt",
+        self,
+        data: dict,
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """寫入反指標指數。"""
         now = datetime.now(tz=timezone.utc)
@@ -147,7 +153,10 @@ class InfluxStore:
         return 1
 
     def write_buzz(
-        self, data: dict, board: str, source: str = "ptt",
+        self,
+        data: dict,
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """寫入個股討論熱度。"""
         now = datetime.now(tz=timezone.utc)
@@ -171,7 +180,10 @@ class InfluxStore:
         return len(points)
 
     def write_sectors(
-        self, data: dict, board: str, source: str = "ptt",
+        self,
+        data: dict,
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """寫入板塊熱度。"""
         now = datetime.now(tz=timezone.utc)
@@ -194,7 +206,10 @@ class InfluxStore:
         return len(points)
 
     def write_all(
-        self, output: dict, board: str, source: str = "ptt",
+        self,
+        output: dict,
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """一次寫入所有可用的分析結果。
 

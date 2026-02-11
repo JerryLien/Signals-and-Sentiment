@@ -44,7 +44,7 @@ class RedditPost:
     subreddit: str
     author: str = ""
     selftext: str = ""
-    score: int = 0           # upvotes - downvotes
+    score: int = 0  # upvotes - downvotes
     upvote_ratio: float = 0.0
     num_comments: int = 0
     created_utc: float = 0.0
@@ -56,12 +56,15 @@ class RedditPost:
 # 抽象後端
 # ──────────────────────────────────────────────────────────────
 
+
 class _Backend(ABC):
     """Reddit 爬蟲後端介面。"""
 
     @abstractmethod
     def fetch_subreddit(
-        self, subreddit: str, limit: int,
+        self,
+        subreddit: str,
+        limit: int,
     ) -> list[RedditPost]: ...
 
     @abstractmethod
@@ -71,6 +74,7 @@ class _Backend(ABC):
 # ──────────────────────────────────────────────────────────────
 # PRAW 後端 (推薦)
 # ──────────────────────────────────────────────────────────────
+
 
 class _PrawBackend(_Backend):
     """使用 PRAW (Python Reddit API Wrapper) 的 OAuth2 後端。
@@ -91,7 +95,9 @@ class _PrawBackend(_Backend):
         )
 
     def fetch_subreddit(
-        self, subreddit: str, limit: int,
+        self,
+        subreddit: str,
+        limit: int,
     ) -> list[RedditPost]:
         posts: list[RedditPost] = []
         try:
@@ -99,18 +105,20 @@ class _PrawBackend(_Backend):
             for submission in sub.hot(limit=limit):
                 if submission.stickied:
                     continue
-                posts.append(RedditPost(
-                    title=submission.title,
-                    url=f"{REDDIT_BASE_URL}{submission.permalink}",
-                    subreddit=subreddit,
-                    author=str(submission.author) if submission.author else "[deleted]",
-                    selftext=submission.selftext or "",
-                    score=submission.score,
-                    upvote_ratio=submission.upvote_ratio,
-                    num_comments=submission.num_comments,
-                    created_utc=submission.created_utc,
-                    flair=submission.link_flair_text or "",
-                ))
+                posts.append(
+                    RedditPost(
+                        title=submission.title,
+                        url=f"{REDDIT_BASE_URL}{submission.permalink}",
+                        subreddit=subreddit,
+                        author=str(submission.author) if submission.author else "[deleted]",
+                        selftext=submission.selftext or "",
+                        score=submission.score,
+                        upvote_ratio=submission.upvote_ratio,
+                        num_comments=submission.num_comments,
+                        created_utc=submission.created_utc,
+                        flair=submission.link_flair_text or "",
+                    )
+                )
         except Exception as exc:
             print(f"[WARN] PRAW 無法取得 r/{subreddit}: {exc}")
         return posts
@@ -124,11 +132,13 @@ class _PrawBackend(_Backend):
                 body = comment.body
                 if body in ("[deleted]", "[removed]"):
                     continue
-                comments.append(RedditComment(
-                    user=str(comment.author) if comment.author else "[deleted]",
-                    body=body,
-                    score=comment.score,
-                ))
+                comments.append(
+                    RedditComment(
+                        user=str(comment.author) if comment.author else "[deleted]",
+                        body=body,
+                        score=comment.score,
+                    )
+                )
         except Exception:
             pass
         return comments
@@ -137,6 +147,7 @@ class _PrawBackend(_Backend):
 # ──────────────────────────────────────────────────────────────
 # Public JSON API 後端 (fallback)
 # ──────────────────────────────────────────────────────────────
+
 
 class _JsonBackend(_Backend):
     """使用 Reddit public JSON API 的無認證後端。
@@ -153,7 +164,9 @@ class _JsonBackend(_Backend):
         self.session.headers.update(HEADERS)
 
     def fetch_subreddit(
-        self, subreddit: str, limit: int,
+        self,
+        subreddit: str,
+        limit: int,
     ) -> list[RedditPost]:
         url = f"{REDDIT_BASE_URL}/r/{subreddit}/hot.json"
         params = {"limit": limit, "raw_json": 1}
@@ -181,18 +194,20 @@ class _JsonBackend(_Backend):
                 continue
 
             permalink = post_data.get("permalink", "")
-            posts.append(RedditPost(
-                title=post_data.get("title", ""),
-                url=f"{REDDIT_BASE_URL}{permalink}",
-                subreddit=subreddit,
-                author=post_data.get("author", "[deleted]"),
-                selftext=post_data.get("selftext", ""),
-                score=post_data.get("score", 0),
-                upvote_ratio=post_data.get("upvote_ratio", 0.0),
-                num_comments=post_data.get("num_comments", 0),
-                created_utc=post_data.get("created_utc", 0.0),
-                flair=post_data.get("link_flair_text", "") or "",
-            ))
+            posts.append(
+                RedditPost(
+                    title=post_data.get("title", ""),
+                    url=f"{REDDIT_BASE_URL}{permalink}",
+                    subreddit=subreddit,
+                    author=post_data.get("author", "[deleted]"),
+                    selftext=post_data.get("selftext", ""),
+                    score=post_data.get("score", 0),
+                    upvote_ratio=post_data.get("upvote_ratio", 0.0),
+                    num_comments=post_data.get("num_comments", 0),
+                    created_utc=post_data.get("created_utc", 0.0),
+                    flair=post_data.get("link_flair_text", "") or "",
+                )
+            )
 
         return posts
 
@@ -219,11 +234,13 @@ class _JsonBackend(_Backend):
             body = cdata.get("body", "")
             if body in ("[deleted]", "[removed]"):
                 continue
-            comments.append(RedditComment(
-                user=cdata.get("author", "[deleted]"),
-                body=body,
-                score=cdata.get("score", 0),
-            ))
+            comments.append(
+                RedditComment(
+                    user=cdata.get("author", "[deleted]"),
+                    body=body,
+                    score=cdata.get("score", 0),
+                )
+            )
 
         return comments
 
@@ -231,6 +248,7 @@ class _JsonBackend(_Backend):
 # ──────────────────────────────────────────────────────────────
 # 後端自動選擇
 # ──────────────────────────────────────────────────────────────
+
 
 def _auto_select_backend(delay: float) -> _Backend:
     """嘗試用 PRAW，失敗則 fallback 到 JSON API。"""
@@ -246,8 +264,7 @@ def _auto_select_backend(delay: float) -> _Backend:
             print("[INFO] 使用 PRAW 後端 (OAuth2, 600 req/min)")
             return backend
         except ImportError:
-            print("[WARN] REDDIT_CLIENT_ID 已設定但 praw 未安裝，"
-                  "fallback 到 public JSON API。")
+            print("[WARN] REDDIT_CLIENT_ID 已設定但 praw 未安裝，" "fallback 到 public JSON API。")
             print("       pip install praw")
 
     print("[INFO] 使用 public JSON API 後端 (60 req/min)")
@@ -257,6 +274,7 @@ def _auto_select_backend(delay: float) -> _Backend:
 # ──────────────────────────────────────────────────────────────
 # 公開介面
 # ──────────────────────────────────────────────────────────────
+
 
 class RedditScraper:
     """爬取 Reddit subreddit 的文章與留言。
