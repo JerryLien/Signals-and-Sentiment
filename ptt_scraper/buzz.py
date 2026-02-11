@@ -148,13 +148,14 @@ class BuzzDetector:
             # 歷史值全部相同
             return float(current_count - mean) if current_count != mean else 0.0
 
-        return (current_count - mean) / std
+        return float((current_count - mean) / std)
 
     def _load_history(self) -> list[dict]:
         if not _BUZZ_HISTORY_PATH.exists():
             return []
         with open(_BUZZ_HISTORY_PATH, encoding="utf-8") as f:
-            return json.load(f)
+            data: list[dict] = json.load(f)
+            return data
 
     def _save_history(self) -> None:
         _DATA_DIR.mkdir(parents=True, exist_ok=True)

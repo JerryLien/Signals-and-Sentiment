@@ -59,7 +59,7 @@ class PttScraper:
 
     def fetch_posts(self, max_pages: int = 1) -> list[Post]:
         """從最新一頁開始往前爬，回傳 Post 列表（含內文與推文）。"""
-        url = f"{PTT_BASE_URL}/bbs/{self.board}/index.html"
+        url: str | None = f"{PTT_BASE_URL}/bbs/{self.board}/index.html"
         all_posts: list[Post] = []
 
         for _ in range(max_pages):
@@ -186,5 +186,5 @@ class PttScraper:
         links = paging.find_all("a")
         for link in links:
             if "上頁" in link.text:
-                return PTT_BASE_URL + link["href"]
+                return PTT_BASE_URL + str(link["href"])
         return None

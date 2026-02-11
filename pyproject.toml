@@ -26,6 +26,13 @@ good-names = ["i", "f", "p", "s", "c", "e", "r", "t", "h"]
 [tool.pylint.format]
 max-line-length = 100
 
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "--cov=ptt_scraper --cov=reddit_scraper --cov-report=term-missing --cov-fail-under=60"
