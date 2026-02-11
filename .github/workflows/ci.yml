@@ -66,3 +66,19 @@ jobs:
 
       - name: Run tests with coverage
         run: pytest tests/ -v --tb=short --cov=ptt_scraper --cov=reddit_scraper --cov-report=term-missing --cov-fail-under=60
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t signals-and-sentiment:test .
+
+      - name: Verify container starts
+        run: |
+          docker run --rm signals-and-sentiment:test python -c "
+          from ptt_scraper import PttScraper, SentimentScorer, EntityMapper, BuzzDetector, SectorTracker
+          from reddit_scraper import RedditScraper, RedditSentimentScorer, RedditEntityMapper
+          print('All imports OK')
+          "
