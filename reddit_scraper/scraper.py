@@ -118,8 +118,6 @@ class _PrawBackend(_Backend):
     def fetch_comments(self, post: RedditPost) -> list[RedditComment]:
         comments: list[RedditComment] = []
         try:
-            # 從 permalink 擷取 submission id
-            permalink = post.url.replace(REDDIT_BASE_URL, "")
             submission = self.reddit.submission(url=post.url)
             submission.comments.replace_more(limit=0)  # 只取已載入的留言
             for comment in submission.comments[:50]:

@@ -90,9 +90,11 @@ class SectorTracker:
                 if matches:
                     entry = heat_map[sector]
                     entry.mention_count += len(matches)
+                    existing_lower = {k.lower() for k in entry.matched_keywords}
                     for m in set(matches):
-                        if m.lower() not in [k.lower() for k in entry.matched_keywords]:
+                        if m.lower() not in existing_lower:
                             entry.matched_keywords.append(m)
+                            existing_lower.add(m.lower())
                     if post.title not in entry.sample_titles and len(entry.sample_titles) < 3:
                         entry.sample_titles.append(post.title)
 
