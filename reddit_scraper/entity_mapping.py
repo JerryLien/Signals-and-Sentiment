@@ -230,7 +230,6 @@ _COMMON_WORDS: set[str] = {
     "MOON",
     "BEAR",
     "BULL",
-    "LONG",
     "SHORT",
 }
 
