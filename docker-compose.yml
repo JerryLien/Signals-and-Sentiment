@@ -17,6 +17,32 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # LLM Agent — 異常事件自動歸因 (The "Why" Layer)
+  # 偵測到情緒異常時呼叫 LLM 解釋原因，結果標註在 Grafana 時間軸上
+  llm-agent:
+    build: .
+    container_name: llm-agent
+    entrypoint: ["python", "-m", "llm_agent.monitor"]
+    volumes:
+      - ./data:/app/data
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-ptt-dev-token}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-ptt-lab}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-ptt_sentiment}
+      GRAFANA_URL: http://grafana:3000
+      GRAFANA_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_POLL_INTERVAL: ${LLM_POLL_INTERVAL:-300}
+    depends_on:
+      influxdb:
+        condition: service_started
+      grafana:
+        condition: service_started
+    restart: unless-stopped
+
   # InfluxDB 初始化後設定 Retention Policy
   influxdb-init:
     image: influxdb:2.7
