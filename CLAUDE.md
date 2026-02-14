@@ -33,9 +33,35 @@ docker compose up -d
 
 # Scheduler (live monitoring)
 python scheduler.py --source both --interval 5 --pages 2
+
+# LLM Agent (anomaly auto-explanation)
+python -m llm_agent.monitor          # Continuous polling
+python -m llm_agent.monitor --once   # Single detection run (testing)
 ```
 
-No test suite exists in this project.
+## Testing & Linting
+
+```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Run tests with coverage (minimum 60% required)
+pytest tests/ -v --tb=short
+
+# Run a single test file
+pytest tests/test_buzz.py -v
+
+# Run a single test
+pytest tests/test_buzz.py::TestBuzzDetector::test_detect_anomaly -v
+
+# Formatting & linting
+black --check --line-length 100 ptt_scraper/ reddit_scraper/ tests/ main.py scheduler.py
+flake8 ptt_scraper/ reddit_scraper/ tests/ main.py scheduler.py
+pylint ptt_scraper/ reddit_scraper/ --fail-under=7.0
+mypy ptt_scraper/ reddit_scraper/ --ignore-missing-imports --disable-error-code=import-untyped
+```
+
+Config: `pyproject.toml` (black, flake8, pylint, mypy, pytest). Line length: 100. Pre-commit hooks configured in `.pre-commit-config.yaml`. CI runs lint + typecheck + test + docker-build on push/PR to main.
 
 ## Architecture
 
@@ -68,9 +94,17 @@ data/            Configuration & mapping files
   dynamic_aliases.json Auto-generated from TWSE/TPEX (gitignored)
   buzz_history.json    Historical mention baselines (gitignored)
 
+llm_agent/       LLM-powered anomaly explanation ("The Why Layer")
+  monitor.py     Polls InfluxDB for anomalies, triggers LLM + Grafana annotation
+  explainer.py   Queries top posts from InfluxDB, calls LLM for summary
+  annotator.py   Writes explanations to Grafana via annotation API
+  config.py      LLM provider, thresholds, polling config (all from env vars)
+
 grafana/         Dashboard & provisioning configs
   dashboards/ptt-signals.json   Main dashboard (12 panels, auto-provisioned)
   provisioning/                 Datasource, alerting, dashboard configs
+
+tests/           pytest test suite (83+ tests, 60% coverage minimum)
 ```
 
 ## Key Design Decisions
@@ -82,6 +116,7 @@ grafana/         Dashboard & provisioning configs
 - **Contrarian thresholds**: graduation ≥ 15% → extreme_fear signal; euphoria ≥ 15% → extreme_greed signal.
 - **Buzz detection**: Z-score ≥ 2.0 flags anomaly; 30-period rolling window persisted to `data/buzz_history.json`.
 - **Timezone**: Fixed to UTC+8 (Taiwan) for all timestamp parsing.
+- **LLM Agent**: Polls InfluxDB for two anomaly types — buzz Z-score > 3.0 and sentiment premium ±0.5 (TSM vs 2330). Uses Anthropic (Claude) or OpenAI as backend. Generates a 30-char Chinese summary written as a Grafana annotation. Dedup cooldown prevents duplicate triggers (default 1 hour).
 
 ## Environment Variables
 
@@ -89,6 +124,10 @@ Secrets live in `.env` (never committed). See `.env.example` for template. Key v
 - `INFLUXDB_TOKEN`, `INFLUXDB_ORG`, `INFLUXDB_BUCKET` — InfluxDB connection
 - `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` — Reddit OAuth2 (optional, enables PRAW)
 - `INFLUXDB_RETENTION_DAYS` — Data retention (default 90)
+- `LLM_PROVIDER` — `anthropic` (default) or `openai`
+- `LLM_API_KEY` — API key for the chosen LLM provider
+- `LLM_MODEL` — Model name (default: `claude-sonnet-4-5-20250929` / `gpt-4o-mini`)
+- `GRAFANA_API_KEY` — Grafana annotation API key (falls back to basic auth)
 
 ## Grafana Alerts
 
