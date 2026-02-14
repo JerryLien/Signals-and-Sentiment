@@ -1,5 +1,6 @@
 """PTT 網頁版爬蟲 - 抓取看板文章列表、內文與推文。"""
 
+import logging
 import re
 import time
 from dataclasses import dataclass, field
@@ -12,7 +13,10 @@ from ptt_scraper.config import (
     HEADERS,
     PTT_BASE_URL,
     REQUEST_DELAY,
+    REQUEST_TIMEOUT,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -59,7 +63,7 @@ class PttScraper:
 
     def fetch_posts(self, max_pages: int = 1) -> list[Post]:
         """從最新一頁開始往前爬，回傳 Post 列表（含內文與推文）。"""
-        url = f"{PTT_BASE_URL}/bbs/{self.board}/index.html"
+        url: str | None = f"{PTT_BASE_URL}/bbs/{self.board}/index.html"
         all_posts: list[Post] = []
 
         for _ in range(max_pages):
@@ -85,7 +89,7 @@ class PttScraper:
 
     def _get_post_list(self, url: str) -> tuple[list[Post], str | None]:
         """解析列表頁，回傳 (文章列表, 上一頁 URL)。"""
-        resp = self.session.get(url)
+        resp = self.session.get(url, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
@@ -103,10 +107,10 @@ class PttScraper:
     def _parse_post(self, url: str) -> Post | None:
         """解析文章內頁，回傳含內文與推文的 Post（僅填入 detail 欄位）。"""
         try:
-            resp = self.session.get(url)
+            resp = self.session.get(url, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.RequestException as exc:
-            print(f"[WARN] 無法取得 {url}: {exc}")
+            logger.warning("無法取得 %s: %s", url, exc)
             return None
 
         soup = BeautifulSoup(resp.text, "lxml")
@@ -186,5 +190,5 @@ class PttScraper:
         links = paging.find_all("a")
         for link in links:
             if "上頁" in link.text:
-                return PTT_BASE_URL + link["href"]
+                return PTT_BASE_URL + str(link["href"])
         return None

@@ -13,17 +13,38 @@ Measurements:
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+logger = logging.getLogger(__name__)
+
 # 預設連線參數（可透過環境變數覆寫）
 INFLUXDB_URL = os.environ.get("INFLUXDB_URL", "http://localhost:8086")
 INFLUXDB_TOKEN = os.environ.get("INFLUXDB_TOKEN", "ptt-dev-token")
 INFLUXDB_ORG = os.environ.get("INFLUXDB_ORG", "ptt-lab")
 INFLUXDB_BUCKET = os.environ.get("INFLUXDB_BUCKET", "ptt_sentiment")
+
+
+def validate_influxdb_env() -> list[str]:
+    """檢查 InfluxDB 必要環境變數是否設定。
+
+    Returns
+    -------
+    list[str]
+        缺少的環境變數名稱。空列表表示全部都有。
+    """
+    required = ["INFLUXDB_TOKEN", "INFLUXDB_ORG", "INFLUXDB_BUCKET"]
+    missing = [v for v in required if not os.environ.get(v)]
+    if missing:
+        logger.warning(
+            "以下 InfluxDB 環境變數未設定，使用預設值: %s",
+            ", ".join(missing),
+        )
+    return missing
 
 
 class InfluxStore:
@@ -55,7 +76,10 @@ class InfluxStore:
     # ------------------------------------------------------------------
 
     def write_sentiment(
-        self, results: list[dict], board: str, source: str = "ptt",
+        self,
+        results: list[dict],
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """寫入每篇文章的情緒分數 + 看板彙總。
 
@@ -127,7 +151,10 @@ class InfluxStore:
         return len(points)
 
     def write_contrarian(
-        self, data: dict, board: str, source: str = "ptt",
+        self,
+        data: dict,
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """寫入反指標指數。"""
         now = datetime.now(tz=timezone.utc)
@@ -147,7 +174,10 @@ class InfluxStore:
         return 1
 
     def write_buzz(
-        self, data: dict, board: str, source: str = "ptt",
+        self,
+        data: dict,
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """寫入個股討論熱度。"""
         now = datetime.now(tz=timezone.utc)
@@ -171,7 +201,10 @@ class InfluxStore:
         return len(points)
 
     def write_sectors(
-        self, data: dict, board: str, source: str = "ptt",
+        self,
+        data: dict,
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """寫入板塊熱度。"""
         now = datetime.now(tz=timezone.utc)
@@ -194,7 +227,10 @@ class InfluxStore:
         return len(points)
 
     def write_all(
-        self, output: dict, board: str, source: str = "ptt",
+        self,
+        output: dict,
+        board: str,
+        source: str = "ptt",
     ) -> int:
         """一次寫入所有可用的分析結果。
 

@@ -19,6 +19,9 @@ HEADERS = {
 # Reddit rate limit: ~60 requests/min for unauthenticated
 REQUEST_DELAY = 1.0
 
+# HTTP 請求逾時秒數
+REQUEST_TIMEOUT = 15
+
 # 情緒關鍵字權重
 BULLISH_WEIGHT = 1.0
 BEARISH_WEIGHT = -1.0

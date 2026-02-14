@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Check formatting with Black
+        run: black --check --line-length 100 ptt_scraper/ reddit_scraper/ tests/ main.py scheduler.py
+
+      - name: Lint with Flake8
+        run: flake8 ptt_scraper/ reddit_scraper/ tests/ main.py scheduler.py
+
+      - name: Lint with Pylint
+        run: pylint ptt_scraper/ reddit_scraper/ --fail-under=7.0
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Type check with mypy
+        run: mypy ptt_scraper/ reddit_scraper/ --ignore-missing-imports --disable-error-code=import-untyped
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        run: pytest tests/ -v --tb=short --cov=ptt_scraper --cov=reddit_scraper --cov-report=term-missing --cov-fail-under=60
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t signals-and-sentiment:test .
+
+      - name: Verify container starts
+        run: |
+          docker run --rm signals-and-sentiment:test python -c "
+          from ptt_scraper import PttScraper, SentimentScorer, EntityMapper, BuzzDetector, SectorTracker
+          from reddit_scraper import RedditScraper, RedditSentimentScorer, RedditEntityMapper
+          print('All imports OK')
+          "

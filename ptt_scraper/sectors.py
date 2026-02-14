@@ -15,7 +15,6 @@ from pathlib import Path
 
 from ptt_scraper.scraper import Post
 
-
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _SECTORS_PATH = _DATA_DIR / "sectors.json"
 
@@ -76,8 +75,7 @@ class SectorTracker:
     def analyze(self, posts: list[Post]) -> SectorReport:
         """分析一批文章的板塊熱度。"""
         heat_map: dict[str, SectorHeat] = {
-            sector: SectorHeat(sector=sector, mention_count=0)
-            for sector in self.sectors
+            sector: SectorHeat(sector=sector, mention_count=0) for sector in self.sectors
         }
 
         for post in posts:
@@ -90,9 +88,11 @@ class SectorTracker:
                 if matches:
                     entry = heat_map[sector]
                     entry.mention_count += len(matches)
+                    existing_lower = {k.lower() for k in entry.matched_keywords}
                     for m in set(matches):
-                        if m.lower() not in [k.lower() for k in entry.matched_keywords]:
+                        if m.lower() not in existing_lower:
                             entry.matched_keywords.append(m)
+                            existing_lower.add(m.lower())
                     if post.title not in entry.sample_titles and len(entry.sample_titles) < 3:
                         entry.sample_titles.append(post.title)
 

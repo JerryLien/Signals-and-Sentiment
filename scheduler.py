@@ -11,10 +11,10 @@
 """
 
 import argparse
+import logging
 import signal
 import sys
 import time
-from datetime import datetime
 
 from ptt_scraper import (
     BuzzDetector,
@@ -24,23 +24,51 @@ from ptt_scraper import (
     SentimentScorer,
     summarize_contrarian,
 )
-from ptt_scraper.store import InfluxStore
+from ptt_scraper.store import InfluxStore, validate_influxdb_env
 from reddit_scraper import RedditEntityMapper, RedditScraper, RedditSentimentScorer
+
+logger = logging.getLogger(__name__)
+
+# 重試設定
+MAX_RETRIES = 3
+INITIAL_BACKOFF = 2  # 秒
+
+
+def _run_with_retry(func, *args, **kwargs) -> None:
+    """執行 func 並在失敗時以指數退避重試，最多 MAX_RETRIES 次。"""
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            func(*args, **kwargs)
+            return
+        except KeyboardInterrupt:
+            raise
+        except Exception as exc:
+            if attempt == MAX_RETRIES:
+                logger.error("第 %d/%d 次嘗試失敗，跳過本輪: %s", attempt, MAX_RETRIES, exc)
+                return
+            wait = INITIAL_BACKOFF * (2 ** (attempt - 1))
+            logger.warning(
+                "第 %d/%d 次嘗試失敗: %s — %ds 後重試",
+                attempt,
+                MAX_RETRIES,
+                exc,
+                wait,
+            )
+            time.sleep(wait)
 
 
 def run_ptt(board: str, pages: int, delay: float, store: InfluxStore) -> None:
     """執行一輪 PTT 爬取 + 分析 + 寫入。"""
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"\n[{ts}] 開始爬取 PTT {board} 版 ({pages} 頁)...")
+    logger.info("開始爬取 PTT %s 版 (%d 頁)...", board, pages)
 
     scraper = PttScraper(board=board, delay=delay)
     posts = scraper.fetch_posts(max_pages=pages)
 
     if not posts:
-        print(f"[{ts}] PTT 未抓到文章，跳過本輪。")
+        logger.info("PTT 未抓到文章，跳過本輪。")
         return
 
-    print(f"[{ts}] PTT 抓到 {len(posts)} 篇文章，開始分析...")
+    logger.info("PTT 抓到 %d 篇文章，開始分析...", len(posts))
     output: dict = {}
 
     # 情緒分析
@@ -50,20 +78,22 @@ def run_ptt(board: str, pages: int, delay: float, store: InfluxStore) -> None:
     for post in posts:
         sentiment = scorer.analyze_post(post)
         entities = mapper.find_entities(post.title + " " + post.content)
-        results.append({
-            "title": post.title,
-            "url": post.url,
-            "author": post.author,
-            "date": post.date,
-            "sentiment": {
-                "score": sentiment.score,
-                "label": sentiment.label,
-                "push": sentiment.push_count,
-                "boo": sentiment.boo_count,
-                "arrow": sentiment.arrow_count,
-            },
-            "entities": entities,
-        })
+        results.append(
+            {
+                "title": post.title,
+                "url": post.url,
+                "author": post.author,
+                "date": post.date,
+                "sentiment": {
+                    "score": sentiment.score,
+                    "label": sentiment.label,
+                    "push": sentiment.push_count,
+                    "boo": sentiment.boo_count,
+                    "arrow": sentiment.arrow_count,
+                },
+                "entities": entities,
+            }
+        )
     output["sentiment"] = results
 
     # 反指標
@@ -112,14 +142,18 @@ def run_ptt(board: str, pages: int, delay: float, store: InfluxStore) -> None:
 
     # 寫入 InfluxDB
     count = store.write_all(output, board, source="ptt")
-    print(f"[{ts}] PTT 已寫入 {count} 筆資料到 InfluxDB。")
+    logger.info("PTT 已寫入 %d 筆資料到 InfluxDB。", count)
 
     # 簡要摘要
     bullish = sum(1 for r in results if r["sentiment"]["label"] == "bullish")
     bearish = sum(1 for r in results if r["sentiment"]["label"] == "bearish")
-    print(f"[{ts}] PTT 情緒: 看多={bullish} 看空={bearish} | "
-          f"反指標: {summary.market_signal} | "
-          f"熱門板塊: {sector_report.top_sector or 'N/A'}")
+    logger.info(
+        "PTT 情緒: 看多=%d 看空=%d | 反指標: %s | 熱門板塊: %s",
+        bullish,
+        bearish,
+        summary.market_signal,
+        sector_report.top_sector or "N/A",
+    )
 
 
 def run_reddit(
@@ -129,18 +163,17 @@ def run_reddit(
     store: InfluxStore,
 ) -> None:
     """執行一輪 Reddit 爬取 + 分析 + 寫入。"""
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     scraper = RedditScraper(subreddits=subreddits, delay=delay)
     subs_str = ", ".join(scraper.subreddits)
-    print(f"\n[{ts}] 開始爬取 Reddit [{subs_str}] (每版 {limit} 篇)...")
+    logger.info("開始爬取 Reddit [%s] (每版 %d 篇)...", subs_str, limit)
 
     posts = scraper.fetch_posts(limit=limit)
 
     if not posts:
-        print(f"[{ts}] Reddit 未抓到文章，跳過本輪。")
+        logger.info("Reddit 未抓到文章，跳過本輪。")
         return
 
-    print(f"[{ts}] Reddit 抓到 {len(posts)} 篇文章，開始分析...")
+    logger.info("Reddit 抓到 %d 篇文章，開始分析...", len(posts))
     output: dict = {}
 
     scorer = RedditSentimentScorer()
@@ -149,31 +182,33 @@ def run_reddit(
     for post in posts:
         sentiment = scorer.analyze_post(post)
         entities = mapper.find_entities(post.title + " " + post.selftext)
-        results.append({
-            "title": post.title,
-            "url": post.url,
-            "author": post.author,
-            "subreddit": post.subreddit,
-            "sentiment": {
-                "score": sentiment.score,
-                "label": sentiment.label,
-                "upvote_ratio": sentiment.upvote_ratio,
-                "post_score": sentiment.post_score,
-                "bullish_hits": sentiment.bullish_hits,
-                "bearish_hits": sentiment.bearish_hits,
-            },
-            "entities": entities,
-        })
+        results.append(
+            {
+                "title": post.title,
+                "url": post.url,
+                "author": post.author,
+                "subreddit": post.subreddit,
+                "sentiment": {
+                    "score": sentiment.score,
+                    "label": sentiment.label,
+                    "upvote_ratio": sentiment.upvote_ratio,
+                    "post_score": sentiment.post_score,
+                    "bullish_hits": sentiment.bullish_hits,
+                    "bearish_hits": sentiment.bearish_hits,
+                },
+                "entities": entities,
+            }
+        )
     output["sentiment"] = results
 
     # 寫入 InfluxDB
     board_label = ",".join(scraper.subreddits)
     count = store.write_all(output, board_label, source="reddit")
-    print(f"[{ts}] Reddit 已寫入 {count} 筆資料到 InfluxDB。")
+    logger.info("Reddit 已寫入 %d 筆資料到 InfluxDB。", count)
 
     bullish = sum(1 for r in results if r["sentiment"]["label"] == "bullish")
     bearish = sum(1 for r in results if r["sentiment"]["label"] == "bearish")
-    print(f"[{ts}] Reddit 情緒: 看多={bullish} 看空={bearish}")
+    logger.info("Reddit 情緒: 看多=%d 看空=%d", bullish, bearish)
 
 
 def main() -> None:
@@ -181,36 +216,61 @@ def main() -> None:
         description="即時監控排程器 — 定時爬取 PTT / Reddit 並寫入 InfluxDB",
     )
     parser.add_argument(
-        "--source", choices=["ptt", "reddit", "both"], default="ptt",
+        "--source",
+        choices=["ptt", "reddit", "both"],
+        default="ptt",
         help="資料源 (預設: ptt)",
     )
     parser.add_argument(
-        "--board", default="Stock", help="PTT 目標看板 (預設: Stock)",
+        "--board",
+        default="Stock",
+        help="PTT 目標看板 (預設: Stock)",
     )
     parser.add_argument(
-        "--pages", type=int, default=1, help="PTT 每輪爬幾頁 (預設: 1)",
+        "--pages",
+        type=int,
+        default=1,
+        help="PTT 每輪爬幾頁 (預設: 1)",
     )
     parser.add_argument(
-        "--subreddits", nargs="+", default=None,
+        "--subreddits",
+        nargs="+",
+        default=None,
         help="Reddit subreddit 列表",
     )
     parser.add_argument(
-        "--limit", type=int, default=25,
+        "--limit",
+        type=int,
+        default=25,
         help="Reddit 每版抓幾篇 (預設: 25)",
     )
     parser.add_argument(
-        "--delay", type=float, default=0.5, help="HTTP 請求間隔秒數 (預設: 0.5)",
+        "--delay",
+        type=float,
+        default=0.5,
+        help="HTTP 請求間隔秒數 (預設: 0.5)",
     )
     parser.add_argument(
-        "--interval", type=int, default=5, help="排程間隔分鐘數 (預設: 5)",
+        "--interval",
+        type=int,
+        default=5,
+        help="排程間隔分鐘數 (預設: 5)",
     )
     args = parser.parse_args()
 
+    # 設定 logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    validate_influxdb_env()
     store = InfluxStore()
 
     # Graceful shutdown
     def shutdown(signum, frame):
-        print("\n收到中斷信號，正在關閉...")
+        logger.info("收到中斷信號，正在關閉...")
         store.close()
         sys.exit(0)
 
@@ -223,29 +283,23 @@ def main() -> None:
     if args.source in ("reddit", "both"):
         sources.append("reddit")
 
-    print(f"即時監控已啟動")
-    print(f"  資料源: {', '.join(sources)}")
+    logger.info("即時監控已啟動")
+    logger.info("  資料源: %s", ", ".join(sources))
     if "ptt" in sources:
-        print(f"  PTT 看板: {args.board}, 頁數: {args.pages}")
+        logger.info("  PTT 看板: %s, 頁數: %d", args.board, args.pages)
     if "reddit" in sources:
         subs = args.subreddits or ["(default 7 subs)"]
-        print(f"  Reddit: {', '.join(subs)}, 每版 {args.limit} 篇")
-    print(f"  間隔: 每 {args.interval} 分鐘")
-    print(f"  InfluxDB: {store.client.url}")
-    print(f"按 Ctrl+C 停止。\n")
+        logger.info("  Reddit: %s, 每版 %d 篇", ", ".join(subs), args.limit)
+    logger.info("  間隔: 每 %d 分鐘", args.interval)
+    logger.info("  InfluxDB: %s", store.client.url)
+    logger.info("按 Ctrl+C 停止。")
 
     while True:
-        try:
-            if "ptt" in sources:
-                run_ptt(args.board, args.pages, args.delay, store)
-            if "reddit" in sources:
-                reddit_delay = max(args.delay, 1.0)  # Reddit 至少 1s
-                run_reddit(args.subreddits, args.limit, reddit_delay, store)
-        except KeyboardInterrupt:
-            raise
-        except Exception as exc:
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{ts}] [ERROR] {exc}")
+        if "ptt" in sources:
+            _run_with_retry(run_ptt, args.board, args.pages, args.delay, store)
+        if "reddit" in sources:
+            reddit_delay = max(args.delay, 1.0)  # Reddit 至少 1s
+            _run_with_retry(run_reddit, args.subreddits, args.limit, reddit_delay, store)
 
         time.sleep(args.interval * 60)
 

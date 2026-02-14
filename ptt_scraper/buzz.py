@@ -11,13 +11,12 @@ from __future__ import annotations
 import json
 import math
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from ptt_scraper.entity_mapping import EntityMapper
 from ptt_scraper.scraper import Post
-
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _BUZZ_HISTORY_PATH = _DATA_DIR / "buzz_history.json"
@@ -32,7 +31,7 @@ class TickerBuzz:
     name: str
     mention_count: int
     buzz_score: float  # 相對歷史基線的標準差倍數
-    is_anomaly: bool   # buzz_score >= threshold
+    is_anomaly: bool  # buzz_score >= threshold
 
 
 @dataclass
@@ -93,13 +92,15 @@ class BuzzDetector:
         tickers: list[TickerBuzz] = []
         for ticker, count in mention_counter.most_common():
             score = self._compute_buzz_score(ticker, count)
-            tickers.append(TickerBuzz(
-                ticker=ticker,
-                name=ticker_names.get(ticker, ""),
-                mention_count=count,
-                buzz_score=round(score, 2),
-                is_anomaly=score >= self.anomaly_threshold,
-            ))
+            tickers.append(
+                TickerBuzz(
+                    ticker=ticker,
+                    name=ticker_names.get(ticker, ""),
+                    mention_count=count,
+                    buzz_score=round(score, 2),
+                    is_anomaly=score >= self.anomaly_threshold,
+                )
+            )
 
         anomalies = [t for t in tickers if t.is_anomaly]
 
@@ -123,7 +124,7 @@ class BuzzDetector:
 
         self.history.append(snapshot)
         # 只保留最近 N 期
-        self.history = self.history[-self.history_window:]
+        self.history = self.history[-self.history_window :]
         self._save_history()
 
     # ------------------------------------------------------------------
@@ -132,9 +133,7 @@ class BuzzDetector:
 
     def _compute_buzz_score(self, ticker: str, current_count: int) -> float:
         """計算 Z-score: (當前值 - 歷史平均) / 歷史標準差。"""
-        historical_counts = [
-            snap["mentions"].get(ticker, 0) for snap in self.history
-        ]
+        historical_counts = [snap["mentions"].get(ticker, 0) for snap in self.history]
 
         if len(historical_counts) < 2:
             # 歷史資料不足，無法計算有意義的 Z-score
@@ -149,13 +148,14 @@ class BuzzDetector:
             # 歷史值全部相同
             return float(current_count - mean) if current_count != mean else 0.0
 
-        return (current_count - mean) / std
+        return float((current_count - mean) / std)
 
     def _load_history(self) -> list[dict]:
         if not _BUZZ_HISTORY_PATH.exists():
             return []
         with open(_BUZZ_HISTORY_PATH, encoding="utf-8") as f:
-            return json.load(f)
+            data: list[dict] = json.load(f)
+            return data
 
     def _save_history(self) -> None:
         _DATA_DIR.mkdir(parents=True, exist_ok=True)
