@@ -77,8 +77,8 @@ jobs:
 
       - name: Verify container starts
         run: |
-          docker run --rm signals-and-sentiment:test python -c "
-          from ptt_scraper import PttScraper, SentimentScorer, EntityMapper, BuzzDetector, SectorTracker
-          from reddit_scraper import RedditScraper, RedditSentimentScorer, RedditEntityMapper
+          docker run --rm --entrypoint python signals-and-sentiment:test -c "
+          from ptt_scraper import PttScraper, SentimentScorer, EntityMapper, BuzzDetector, SectorTracker;
+          from reddit_scraper import RedditScraper, RedditSentimentScorer, RedditEntityMapper;
           print('All imports OK')
           "
